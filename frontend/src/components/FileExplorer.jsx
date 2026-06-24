@@ -166,50 +166,52 @@ export function FileExplorer({ device, onClose, clipboard, onClipboardSet, onCli
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
-        {message && <p className="mb-3 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink">{message}</p>}
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="sticky top-0 z-10 border-b border-line bg-surface/95 p-3 backdrop-blur sm:p-4">
+          {message && <p className="mb-3 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink">{message}</p>}
 
-        {clipboard && (
-          <div className="mb-3 flex flex-col gap-3 rounded-md border border-signal/50 bg-teal-950/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-ink">
-              {clipboard.action === "move" ? "Move" : "Copy"} {clipboard.sourcePaths.length} item{clipboard.sourcePaths.length === 1 ? "" : "s"} from {clipboard.sourceDeviceName}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button className="btn-primary min-h-9 px-3" onClick={pasteHere} disabled={busy}>
-                <ClipboardPaste size={15} aria-hidden="true" />
-                Paste to {pasteTarget}
-              </button>
-              <button className="btn-secondary min-h-9 px-3" onClick={onClipboardClear}>
-                Clear
-              </button>
+          {clipboard && (
+            <div className="mb-3 flex flex-col gap-3 rounded-md border border-signal/50 bg-teal-950/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-ink">
+                {clipboard.action === "move" ? "Move" : "Copy"} {clipboard.sourcePaths.length} item{clipboard.sourcePaths.length === 1 ? "" : "s"} from {clipboard.sourceDeviceName}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn-primary min-h-9 px-3" onClick={pasteHere} disabled={busy}>
+                  <ClipboardPaste size={15} aria-hidden="true" />
+                  Paste to {pasteTarget}
+                </button>
+                <button className="btn-secondary min-h-9 px-3" onClick={onClipboardClear}>
+                  Clear
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {selectedCount > 0 && (
-          <div className="mb-3 flex flex-col gap-3 rounded-md border border-line bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-ink">{selectedCount} selected</p>
-            <div className="flex flex-wrap gap-2">
-              <button className="btn-secondary min-h-9 px-3" onClick={() => copySelected("copy")} disabled={busy}>
-                <Copy size={15} aria-hidden="true" />
-                Copy
-              </button>
-              <button className="btn-secondary min-h-9 px-3" onClick={() => copySelected("move")} disabled={busy}>
-                <MoveRight size={15} aria-hidden="true" />
-                Move
-              </button>
-              <button className="btn-danger min-h-9 px-3" onClick={deleteSelected} disabled={busy}>
-                <Trash2 size={15} aria-hidden="true" />
-                Delete
-              </button>
-              <button className="btn-secondary min-h-9 px-3" onClick={() => setSelectedPaths([])}>
-                Clear
-              </button>
+          {selectedCount > 0 && (
+            <div className="flex flex-col gap-3 rounded-md border border-line bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-ink">{selectedCount} selected</p>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn-secondary min-h-9 px-3" onClick={() => copySelected("copy")} disabled={busy}>
+                  <Copy size={15} aria-hidden="true" />
+                  Copy
+                </button>
+                <button className="btn-secondary min-h-9 px-3" onClick={() => copySelected("move")} disabled={busy}>
+                  <MoveRight size={15} aria-hidden="true" />
+                  Move
+                </button>
+                <button className="btn-danger min-h-9 px-3" onClick={deleteSelected} disabled={busy}>
+                  <Trash2 size={15} aria-hidden="true" />
+                  Delete
+                </button>
+                <button className="btn-secondary min-h-9 px-3" onClick={() => setSelectedPaths([])}>
+                  Clear
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        <div className="overflow-hidden rounded-lg border border-line bg-panel">
+        <div className="m-3 overflow-hidden rounded-lg border border-line bg-panel sm:m-4">
           {listing.entries.length > 0 && (
             <label className="flex items-center gap-3 border-b border-line px-4 py-3 text-sm text-muted">
               <input className="h-5 w-5 rounded border-line bg-surface accent-teal-400" type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
