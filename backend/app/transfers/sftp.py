@@ -8,6 +8,9 @@ from app.devices.service import connect_ssh_device
 from app.files.sftp import normalize_path
 
 
+TRANSFER_CHUNK_SIZE = 8 * 1024 * 1024
+
+
 def ensure_directory(sftp, path: str) -> None:
     normalized = normalize_path(path)
     if normalized in ("", "."):
@@ -27,7 +30,7 @@ def copy_file_contents(source_sftp, destination_sftp, source_path: str, destinat
     with source_sftp.open(source_path, "rb") as source_file:
         with destination_sftp.open(destination_path, "wb") as destination_file:
             while True:
-                chunk = source_file.read(1024 * 1024)
+                chunk = source_file.read(TRANSFER_CHUNK_SIZE)
                 if not chunk:
                     break
                 destination_file.write(chunk)

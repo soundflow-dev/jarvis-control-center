@@ -11,6 +11,7 @@ from app.transfers.files import TransferCancelled, measure_transfer_paths, trans
 
 
 TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
+PROGRESS_COMMIT_BYTES = 8 * 1024 * 1024
 
 
 def utc_now() -> datetime:
@@ -144,7 +145,7 @@ def run_transfer_job(job_id: int) -> None:
             nonlocal last_speed_sample_at, last_speed_sample_bytes, transferred_since_commit
             job.transferred_bytes += bytes_written
             transferred_since_commit += bytes_written
-            if transferred_since_commit >= 1024 * 1024:
+            if transferred_since_commit >= PROGRESS_COMMIT_BYTES:
                 now = utc_now()
                 if last_speed_sample_at is None:
                     last_speed_sample_at = comparable_datetime(job.started_at) if job.started_at else now

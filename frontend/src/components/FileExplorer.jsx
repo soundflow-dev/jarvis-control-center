@@ -16,6 +16,11 @@ function formatSize(size) {
   return `${(size / 1024 / 1024 / 1024).toFixed(1)} GB`
 }
 
+function entrySizeLabel(entry) {
+  if (entry.type === "directory") return "Folder"
+  return formatSize(entry.size) || "0 B"
+}
+
 export function FileExplorer({ device, targetType = "device", onClose, clipboard, onClipboardSet, onClipboardClear, onJobCreated, embedded = false }) {
   const [path, setPath] = useState(".")
   const [listing, setListing] = useState({ path: ".", parent: ".", entries: [] })
@@ -229,15 +234,20 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
             ..
           </button>
           {listing.entries.map((entry) => (
-            <div key={entry.path} className={`grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line px-4 py-3 last:border-b-0 md:grid-cols-[1fr_120px_180px_auto] ${selectedPaths.includes(entry.path) ? "bg-surface" : ""}`}>
+            <div key={entry.path} className={`grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line px-4 py-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_120px_180px_auto] ${selectedPaths.includes(entry.path) ? "bg-surface" : ""}`}>
               <div className="flex min-w-0 items-center gap-3">
                 <input className="h-5 w-5 shrink-0 rounded border-line bg-surface accent-teal-400" type="checkbox" checked={selectedPaths.includes(entry.path)} onChange={() => toggleSelection(entry)} onClick={(event) => event.stopPropagation()} />
                 <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => entry.type === "directory" ? load(entry.path) : toggleSelection(entry)}>
                   {entry.type === "directory" ? <Folder className="shrink-0 text-teal-300" size={19} aria-hidden="true" /> : <File className="shrink-0 text-muted" size={19} aria-hidden="true" />}
-                  <span className="truncate text-sm font-medium text-ink">{entry.name}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-ink">{entry.name}</span>
+                    <span className="mt-0.5 block truncate text-xs text-muted md:hidden">
+                      {entrySizeLabel(entry)}{entry.modified_at ? ` · ${new Date(entry.modified_at).toLocaleString()}` : ""}
+                    </span>
+                  </span>
                 </button>
               </div>
-              <span className="hidden text-right text-xs text-muted md:block">{entry.type === "file" ? formatSize(entry.size) : ""}</span>
+              <span className="hidden text-right text-xs text-muted md:block">{entrySizeLabel(entry)}</span>
               <span className="hidden text-xs text-muted md:block">{entry.modified_at ? new Date(entry.modified_at).toLocaleString() : ""}</span>
               <div className="flex justify-end gap-2">
                 {entry.type === "file" && (

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ntpath
+import os
 import posixpath
 import stat
 from dataclasses import dataclass
@@ -13,6 +14,9 @@ from app.devices.service import connect_ssh_device
 from app.files.sftp import normalize_path
 from app.files.smb import register_smb_device, smb_unc_path
 from app.transfers.sftp import ensure_directory, remove_tree
+
+
+TRANSFER_CHUNK_SIZE = int(os.getenv("TRANSFER_CHUNK_SIZE", str(8 * 1024 * 1024)))
 
 
 @dataclass
@@ -122,14 +126,14 @@ class TransferStore:
         if self.device.connection_type == "smb":
             with smbclient.open_file(smb_unc_path(self.device, safe_path), mode="rb") as source_file:
                 while True:
-                    chunk = source_file.read(1024 * 1024)
+                    chunk = source_file.read(TRANSFER_CHUNK_SIZE)
                     if not chunk:
                         break
                     yield chunk
             return
         with self.sftp.open(safe_path, "rb") as source_file:
             while True:
-                chunk = source_file.read(1024 * 1024)
+                chunk = source_file.read(TRANSFER_CHUNK_SIZE)
                 if not chunk:
                     break
                 yield chunk
@@ -167,6 +171,8 @@ class TransferStore:
                         progress(len(chunk))
         else:
             with self.sftp.open(safe_path, "wb") as destination_file:
+                if hasattr(destination_file, "set_pipelined"):
+                    destination_file.set_pipelined(True)
                 for chunk in chunks:
                     if should_cancel and should_cancel():
                         raise TransferCancelled("Transfer cancelled.")
