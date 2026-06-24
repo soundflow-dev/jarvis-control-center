@@ -1,0 +1,9 @@
+argon2-cffi==23.1.0
+cryptography==42.0.8
+email-validator==2.2.0
+eval-type-backport==0.2.2
+fastapi==0.111.0
+paramiko==3.4.0
+pydantic-settings==2.3.4
+SQLAlchemy==2.0.31
+uvicorn[standard]==0.30.1
