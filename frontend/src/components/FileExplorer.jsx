@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Download, File, Folder, FolderPlus, RefreshCw, Trash2, X } from "lucide-react"
+import { Copy, Download, File, Folder, FolderPlus, MoveRight, RefreshCw, Trash2, X } from "lucide-react"
 
 import { api } from "../api/client"
 
@@ -21,6 +21,7 @@ export function FileExplorer({ device, onClose }) {
   const [listing, setListing] = useState({ path: ".", parent: ".", entries: [] })
   const [message, setMessage] = useState("")
   const [busy, setBusy] = useState(false)
+  const [selectedPaths, setSelectedPaths] = useState([])
 
   async function load(nextPath = path) {
     setBusy(true)
@@ -29,6 +30,7 @@ export function FileExplorer({ device, onClose }) {
       const result = await api.listFiles(device.id, nextPath)
       setListing(result)
       setPath(result.path)
+      setSelectedPaths([])
     } catch (err) {
       setMessage(err.message)
     } finally {
@@ -60,9 +62,47 @@ export function FileExplorer({ device, onClose }) {
     await load(path)
   }
 
+  async function deleteSelected() {
+    if (selectedPaths.length === 0) return
+    if (!window.confirm(`Delete ${selectedPaths.length} selected item${selectedPaths.length === 1 ? "" : "s"}?`)) return
+    setBusy(true)
+    setMessage("")
+    try {
+      for (const selectedPath of selectedPaths) {
+        await api.deletePath(device.id, selectedPath)
+      }
+      await load(path)
+      setMessage("Selected items deleted.")
+    } catch (err) {
+      setMessage(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function downloadEntry(entry) {
     window.location.href = `/api/files/${device.id}/download?path=${encodeURIComponent(entry.path)}`
   }
+
+  function toggleSelection(entry) {
+    setSelectedPaths((current) => {
+      if (current.includes(entry.path)) {
+        return current.filter((item) => item !== entry.path)
+      }
+      return [...current, entry.path]
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selectedPaths.length === listing.entries.length) {
+      setSelectedPaths([])
+    } else {
+      setSelectedPaths(listing.entries.map((entry) => entry.path))
+    }
+  }
+
+  const selectedCount = selectedPaths.length
+  const allSelected = listing.entries.length > 0 && selectedCount === listing.entries.length
 
   return (
     <section className="fixed inset-0 z-20 flex flex-col bg-surface">
@@ -90,17 +130,49 @@ export function FileExplorer({ device, onClose }) {
       <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
         {message && <p className="mb-3 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink">{message}</p>}
 
+        {selectedCount > 0 && (
+          <div className="mb-3 flex flex-col gap-3 rounded-md border border-line bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-ink">{selectedCount} selected</p>
+            <div className="flex flex-wrap gap-2">
+              <button className="btn-secondary min-h-9 px-3" disabled title="Copy selected coming soon">
+                <Copy size={15} aria-hidden="true" />
+                Copy
+              </button>
+              <button className="btn-secondary min-h-9 px-3" disabled title="Move selected coming soon">
+                <MoveRight size={15} aria-hidden="true" />
+                Move
+              </button>
+              <button className="btn-danger min-h-9 px-3" onClick={deleteSelected} disabled={busy}>
+                <Trash2 size={15} aria-hidden="true" />
+                Delete
+              </button>
+              <button className="btn-secondary min-h-9 px-3" onClick={() => setSelectedPaths([])}>
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-hidden rounded-lg border border-line bg-panel">
+          {listing.entries.length > 0 && (
+            <label className="flex items-center gap-3 border-b border-line px-4 py-3 text-sm text-muted">
+              <input className="h-5 w-5 rounded border-line bg-surface accent-teal-400" type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
+              Select all
+            </label>
+          )}
           <button className="flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left text-sm text-ink hover:bg-surface" onClick={() => load(listing.parent)} disabled={path === "." || path === "/"}>
             <Folder size={18} aria-hidden="true" />
             ..
           </button>
           {listing.entries.map((entry) => (
-            <div key={entry.path} className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line px-4 py-3 last:border-b-0 md:grid-cols-[1fr_120px_180px_auto]">
-              <button className="flex min-w-0 items-center gap-3 text-left" onClick={() => entry.type === "directory" ? load(entry.path) : downloadEntry(entry)}>
-                {entry.type === "directory" ? <Folder className="shrink-0 text-teal-300" size={19} aria-hidden="true" /> : <File className="shrink-0 text-muted" size={19} aria-hidden="true" />}
-                <span className="truncate text-sm font-medium text-ink">{entry.name}</span>
-              </button>
+            <div key={entry.path} className={`grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line px-4 py-3 last:border-b-0 md:grid-cols-[1fr_120px_180px_auto] ${selectedPaths.includes(entry.path) ? "bg-surface" : ""}`}>
+              <div className="flex min-w-0 items-center gap-3">
+                <input className="h-5 w-5 shrink-0 rounded border-line bg-surface accent-teal-400" type="checkbox" checked={selectedPaths.includes(entry.path)} onChange={() => toggleSelection(entry)} onClick={(event) => event.stopPropagation()} />
+                <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => entry.type === "directory" ? load(entry.path) : toggleSelection(entry)}>
+                  {entry.type === "directory" ? <Folder className="shrink-0 text-teal-300" size={19} aria-hidden="true" /> : <File className="shrink-0 text-muted" size={19} aria-hidden="true" />}
+                  <span className="truncate text-sm font-medium text-ink">{entry.name}</span>
+                </button>
+              </div>
               <span className="hidden text-right text-xs text-muted md:block">{entry.type === "file" ? formatSize(entry.size) : ""}</span>
               <span className="hidden text-xs text-muted md:block">{entry.modified_at ? new Date(entry.modified_at).toLocaleString() : ""}</span>
               <div className="flex justify-end gap-2">
