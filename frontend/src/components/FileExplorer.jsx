@@ -25,6 +25,7 @@ export function FileExplorer({ device, onClose }) {
   const [transferAction, setTransferAction] = useState(null)
   const [destinationDeviceId, setDestinationDeviceId] = useState(device.id)
   const [destinationPath, setDestinationPath] = useState(".")
+  const [destinationListing, setDestinationListing] = useState({ path: ".", parent: ".", entries: [] })
   const [sftpDevices, setSftpDevices] = useState([device])
 
   async function load(nextPath = path) {
@@ -97,8 +98,30 @@ export function FileExplorer({ device, onClose }) {
   function openTransfer(action) {
     setTransferAction(action)
     setDestinationDeviceId(device.id)
-    setDestinationPath(path)
+    loadDestination(device.id, path)
     setMessage("")
+  }
+
+  async function loadDestination(deviceId = destinationDeviceId, nextPath = destinationPath) {
+    setBusy(true)
+    setMessage("")
+    try {
+      const result = await api.listFiles(deviceId, nextPath)
+      setDestinationDeviceId(Number(deviceId))
+      setDestinationPath(result.path)
+      setDestinationListing(result)
+    } catch (err) {
+      setMessage(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function createDestinationFolder() {
+    const name = window.prompt("Folder name")
+    if (!name) return
+    await api.mkdir(destinationDeviceId, joinPath(destinationPath, name))
+    await loadDestination(destinationDeviceId, destinationPath)
   }
 
   async function runTransfer(event) {
@@ -111,7 +134,7 @@ export function FileExplorer({ device, onClose }) {
         source_device_id: device.id,
         destination_device_id: Number(destinationDeviceId),
         source_paths: selectedPaths,
-        destination_path: destinationPath || ".",
+        destination_path: destinationPath,
         action: transferAction,
       })
       setTransferAction(null)
@@ -194,24 +217,58 @@ export function FileExplorer({ device, onClose }) {
         )}
 
         {transferAction && (
-          <form className="mb-3 rounded-md border border-line bg-panel px-4 py-3" onSubmit={runTransfer}>
-            <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
-              <div>
-                <label className="label" htmlFor="destination_device">Destination</label>
-                <select className="field mt-1" id="destination_device" value={destinationDeviceId} onChange={(event) => setDestinationDeviceId(event.target.value)}>
-                  {sftpDevices.map((item) => (
-                    <option key={item.id} value={item.id}>{item.name} · {item.host}</option>
-                  ))}
-                </select>
+          <form className="mb-3 overflow-hidden rounded-md border border-line bg-panel" onSubmit={runTransfer}>
+            <div className="border-b border-line px-4 py-3">
+              <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                <div>
+                  <label className="label" htmlFor="destination_device">Destination machine</label>
+                  <select
+                    className="field mt-1"
+                    id="destination_device"
+                    value={destinationDeviceId}
+                    onChange={(event) => loadDestination(Number(event.target.value), ".")}
+                  >
+                    {sftpDevices.map((item) => (
+                      <option key={item.id} value={item.id}>{item.name} · {item.host}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button className="btn-secondary min-h-11" type="button" onClick={createDestinationFolder} disabled={busy}>
+                    <FolderPlus size={16} aria-hidden="true" />
+                    Folder
+                  </button>
+                  <button className="btn-primary min-h-11" disabled={busy}>{transferAction === "move" ? "Move here" : "Copy here"}</button>
+                  <button className="btn-secondary min-h-11" type="button" onClick={() => setTransferAction(null)}>Cancel</button>
+                </div>
               </div>
-              <div>
-                <label className="label" htmlFor="destination_path">Destination folder</label>
-                <input className="field mt-1" id="destination_path" value={destinationPath} onChange={(event) => setDestinationPath(event.target.value)} placeholder="." />
-              </div>
-              <div className="flex gap-2">
-                <button className="btn-primary min-h-11" disabled={busy}>{transferAction === "move" ? "Move" : "Copy"}</button>
-                <button className="btn-secondary min-h-11" type="button" onClick={() => setTransferAction(null)}>Cancel</button>
-              </div>
+              <p className="mt-3 truncate text-xs text-muted">Destination: {destinationPath}</p>
+            </div>
+
+            <div className="max-h-80 overflow-auto">
+              <button
+                className="flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left text-sm text-ink hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45"
+                type="button"
+                onClick={() => loadDestination(destinationDeviceId, destinationListing.parent)}
+                disabled={destinationPath === "." || destinationPath === "/"}
+              >
+                <Folder size={18} aria-hidden="true" />
+                ..
+              </button>
+              {destinationListing.entries.filter((entry) => entry.type === "directory").map((entry) => (
+                <button
+                  key={entry.path}
+                  className="flex w-full min-w-0 items-center gap-3 border-b border-line px-4 py-3 text-left last:border-b-0 hover:bg-surface"
+                  type="button"
+                  onClick={() => loadDestination(destinationDeviceId, entry.path)}
+                >
+                  <Folder className="shrink-0 text-teal-300" size={19} aria-hidden="true" />
+                  <span className="truncate text-sm font-medium text-ink">{entry.name}</span>
+                </button>
+              ))}
+              {destinationListing.entries.filter((entry) => entry.type === "directory").length === 0 && (
+                <p className="px-4 py-8 text-center text-sm text-muted">No folders here</p>
+              )}
             </div>
           </form>
         )}
