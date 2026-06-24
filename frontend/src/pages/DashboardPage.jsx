@@ -303,7 +303,7 @@ export function DashboardPage() {
           </div>
         </section>
       ) : (
-        <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1.35fr)]">
           <aside className="space-y-3 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-auto">
             {devices.map((device) => (
               <DeviceSummary key={device.id} device={device} />
