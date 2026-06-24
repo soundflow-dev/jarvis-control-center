@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { createRoot } from "react-dom/client"
 
 import "./styles.css"
 import { api } from "./api/client"
@@ -54,3 +55,5 @@ export default function App() {
     </Shell>
   )
 }
+
+createRoot(document.getElementById("root")).render(<App />)
