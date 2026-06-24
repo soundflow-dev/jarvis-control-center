@@ -141,16 +141,27 @@ TRANSFER_CHUNK_SIZE=16777216
 
 # Default: 4 chunks. Allowed range: 1 to 16.
 TRANSFER_PREFETCH_CHUNKS=4
+
+# Default: 2 files. Allowed range: 1 to 16.
+TRANSFER_PARALLEL_FILES=2
+
+# Default: 4 streams for each large file. Allowed range: 1 to 16.
+TRANSFER_FILE_STREAMS=4
+
+# Default: 1 GB. Files smaller than this use one stream.
+TRANSFER_FILE_STREAM_MIN_SIZE=1073741824
 ```
 
-For very fast networks, try increasing one setting at a time, for example:
+For very fast networks and single large files, tune `TRANSFER_FILE_STREAMS` first. For example:
 
 ```bash
 TRANSFER_CHUNK_SIZE=33554432
 TRANSFER_PREFETCH_CHUNKS=4
+TRANSFER_FILE_STREAMS=4
+TRANSFER_FILE_STREAM_MIN_SIZE=1073741824
 ```
 
-Higher values can improve large-file transfers, but they also increase backend memory use per active transfer. The UI still keeps the same simple behavior: choose source, choose destination, copy or move.
+Higher values can improve large-file transfers, but they also increase backend memory use and the number of SMB/SFTP connections per active transfer. The UI still keeps the same simple behavior: choose source, choose destination, copy or move.
 
 ## Development
 

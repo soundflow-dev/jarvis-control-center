@@ -6,6 +6,7 @@ import posixpath
 import queue
 import stat
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Callable, Iterator
 
@@ -28,6 +29,9 @@ def _positive_int_env(name: str, default: int, minimum: int, maximum: int) -> in
 
 TRANSFER_CHUNK_SIZE = _positive_int_env("TRANSFER_CHUNK_SIZE", 16 * 1024 * 1024, 1024 * 1024, 256 * 1024 * 1024)
 TRANSFER_PREFETCH_CHUNKS = _positive_int_env("TRANSFER_PREFETCH_CHUNKS", 4, 1, 16)
+TRANSFER_PARALLEL_FILES = _positive_int_env("TRANSFER_PARALLEL_FILES", 2, 1, 16)
+TRANSFER_FILE_STREAMS = _positive_int_env("TRANSFER_FILE_STREAMS", 4, 1, 16)
+TRANSFER_FILE_STREAM_MIN_SIZE = _positive_int_env("TRANSFER_FILE_STREAM_MIN_SIZE", 1024 * 1024 * 1024, 64 * 1024 * 1024, 1024 * 1024 * 1024 * 1024)
 _QUEUE_DONE = object()
 
 
@@ -36,6 +40,7 @@ class FileMeta:
     mode: int | None = None
     atime: float | None = None
     mtime: float | None = None
+    size: int | None = None
 
 
 class TransferCancelled(Exception):
@@ -120,7 +125,17 @@ class TransferStore:
             mode=getattr(attrs, "st_mode", None),
             atime=getattr(attrs, "st_atime", None),
             mtime=getattr(attrs, "st_mtime", None),
+            size=int(getattr(attrs, "st_size", 0) or 0),
         )
+
+    def prepare_file(self, path: str) -> None:
+        safe_path = self.normalize(path)
+        self.ensure_dir(posixpath.dirname(safe_path))
+        if self.device.connection_type == "smb":
+            with smbclient.open_file(smb_unc_path(self.device, safe_path), mode="wb"):
+                return
+        with self.sftp.open(safe_path, "wb"):
+            return
 
     def ensure_dir(self, path: str) -> None:
         safe_path = self.normalize(path)
@@ -192,6 +207,62 @@ class TransferStore:
                 yield item
         finally:
             stop_event.set()
+
+    def read_range(self, path: str, offset: int, length: int, should_cancel: Callable[[], bool] | None = None) -> Iterator[bytes]:
+        safe_path = self.normalize(path)
+        remaining = length
+        if self.device.connection_type == "smb":
+            with smbclient.open_file(smb_unc_path(self.device, safe_path), mode="rb") as source_file:
+                source_file.seek(offset)
+                while remaining > 0:
+                    if should_cancel and should_cancel():
+                        raise TransferCancelled("Transfer cancelled.")
+                    chunk = source_file.read(min(TRANSFER_CHUNK_SIZE, remaining))
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
+                    yield chunk
+            return
+        with self.sftp.open(safe_path, "rb") as source_file:
+            source_file.seek(offset)
+            while remaining > 0:
+                if should_cancel and should_cancel():
+                    raise TransferCancelled("Transfer cancelled.")
+                chunk = source_file.read(min(TRANSFER_CHUNK_SIZE, remaining))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
+                yield chunk
+
+    def write_range(
+        self,
+        path: str,
+        offset: int,
+        chunks: Iterator[bytes],
+        progress: Callable[[int], None] | None = None,
+        should_cancel: Callable[[], bool] | None = None,
+    ) -> None:
+        safe_path = self.normalize(path)
+        if self.device.connection_type == "smb":
+            with smbclient.open_file(smb_unc_path(self.device, safe_path), mode="r+b") as destination_file:
+                destination_file.seek(offset)
+                for chunk in chunks:
+                    if should_cancel and should_cancel():
+                        raise TransferCancelled("Transfer cancelled.")
+                    destination_file.write(chunk)
+                    if progress:
+                        progress(len(chunk))
+            return
+        with self.sftp.open(safe_path, "r+b") as destination_file:
+            if hasattr(destination_file, "set_pipelined"):
+                destination_file.set_pipelined(True)
+            destination_file.seek(offset)
+            for chunk in chunks:
+                if should_cancel and should_cancel():
+                    raise TransferCancelled("Transfer cancelled.")
+                destination_file.write(chunk)
+                if progress:
+                    progress(len(chunk))
 
     def total_size(self, path: str) -> tuple[int, int]:
         safe_path = self.normalize(path)
@@ -288,8 +359,92 @@ def copy_tree(
         destination.apply_meta(destination_path, source_meta)
         return copied_files
 
-    destination.write_file(destination_path, source.read_chunks(source_path, should_cancel), source_meta, progress, should_cancel)
+    if source_meta.size and source_meta.size >= TRANSFER_FILE_STREAM_MIN_SIZE and TRANSFER_FILE_STREAMS > 1:
+        copy_file_multistream(
+            source.device,
+            destination.device,
+            source_path,
+            destination_path,
+            source_meta,
+            progress,
+            should_cancel,
+        )
+    else:
+        destination.write_file(destination_path, source.read_chunks(source_path, should_cancel), source_meta, progress, should_cancel)
     return 1
+
+
+def copy_file_multistream(
+    source_device: Device,
+    destination_device: Device,
+    source_path: str,
+    destination_path: str,
+    source_meta: FileMeta,
+    progress: Callable[[int], None] | None = None,
+    should_cancel: Callable[[], bool] | None = None,
+) -> None:
+    size = source_meta.size or 0
+    if size <= 0:
+        source = TransferStore(source_device)
+        destination = TransferStore(destination_device)
+        try:
+            destination.write_file(destination_path, source.read_chunks(source_path, should_cancel), source_meta, progress, should_cancel)
+        finally:
+            source.close()
+            destination.close()
+        return
+
+    streams = min(TRANSFER_FILE_STREAMS, max(1, (size + TRANSFER_FILE_STREAM_MIN_SIZE - 1) // TRANSFER_FILE_STREAM_MIN_SIZE))
+    if streams <= 1:
+        source = TransferStore(source_device)
+        destination = TransferStore(destination_device)
+        try:
+            destination.write_file(destination_path, source.read_chunks(source_path, should_cancel), source_meta, progress, should_cancel)
+        finally:
+            source.close()
+            destination.close()
+        return
+
+    destination.prepare_file(destination_path)
+    cancel_event = threading.Event()
+    segment_size = (size + streams - 1) // streams
+    segments = [
+        (offset, min(segment_size, size - offset))
+        for offset in range(0, size, segment_size)
+        if size - offset > 0
+    ]
+
+    def worker(offset: int, length: int) -> None:
+        if cancel_event.is_set() or (should_cancel and should_cancel()):
+            raise TransferCancelled("Transfer cancelled.")
+        worker_source = TransferStore(source_device)
+        worker_destination = TransferStore(destination_device)
+        try:
+            worker_destination.write_range(
+                destination_path,
+                offset,
+                worker_source.read_range(
+                    source_path,
+                    offset,
+                    length,
+                    lambda: cancel_event.is_set() or (should_cancel() if should_cancel else False),
+                ),
+                progress,
+                lambda: cancel_event.is_set() or (should_cancel() if should_cancel else False),
+            )
+        finally:
+            worker_source.close()
+            worker_destination.close()
+
+    with ThreadPoolExecutor(max_workers=min(streams, len(segments))) as executor:
+        futures = [executor.submit(worker, offset, length) for offset, length in segments]
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except BaseException:
+                cancel_event.set()
+                raise
+    destination.apply_meta(destination_path, source_meta)
 
 
 def transfer_file_paths(
@@ -308,6 +463,7 @@ def transfer_file_paths(
     try:
         destination_base = destination.normalize(destination_path)
         destination.ensure_dir(destination_base)
+        copy_tasks: list[tuple[str, str]] = []
         for raw_source_path in source_paths:
             if should_cancel and should_cancel():
                 raise TransferCancelled("Transfer cancelled.")
@@ -320,7 +476,41 @@ def transfer_file_paths(
                     raise ValueError("Destination cannot be inside the selected source folder.")
             if not destination.exists(destination_item):
                 created_destinations.append(destination_item)
-            copied_files += copy_tree(source, destination, source_path, destination_item, progress, should_cancel)
+            copy_tasks.append((source_path, destination_item))
+
+        if len(copy_tasks) > 1 and TRANSFER_PARALLEL_FILES > 1:
+            cancel_event = threading.Event()
+
+            def worker(source_path: str, destination_item: str) -> int:
+                if cancel_event.is_set() or (should_cancel and should_cancel()):
+                    raise TransferCancelled("Transfer cancelled.")
+                worker_source = TransferStore(source_device)
+                worker_destination = TransferStore(destination_device)
+                try:
+                    return copy_tree(
+                        worker_source,
+                        worker_destination,
+                        source_path,
+                        destination_item,
+                        progress,
+                        lambda: cancel_event.is_set() or (should_cancel() if should_cancel else False),
+                    )
+                finally:
+                    worker_source.close()
+                    worker_destination.close()
+
+            with ThreadPoolExecutor(max_workers=min(TRANSFER_PARALLEL_FILES, len(copy_tasks))) as executor:
+                futures = [executor.submit(worker, source_path, destination_item) for source_path, destination_item in copy_tasks]
+                for future in as_completed(futures):
+                    try:
+                        copied_files += future.result()
+                    except BaseException:
+                        cancel_event.set()
+                        raise
+        else:
+            for source_path, destination_item in copy_tasks:
+                copied_files += copy_tree(source, destination, source_path, destination_item, progress, should_cancel)
+
         if action == "move":
             for raw_source_path in source_paths:
                 if should_cancel and should_cancel():

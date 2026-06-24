@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from datetime import datetime
 
 from sqlalchemy.orm import Session as DbSession
@@ -107,6 +108,8 @@ def run_transfer_job(job_id: int) -> None:
     transferred_since_commit = 0
     last_speed_sample_bytes = 0
     last_speed_sample_at: datetime | None = None
+    progress_lock = threading.Lock()
+    cancel_lock = threading.Lock()
     try:
         job = db.query(TransferJob).filter(TransferJob.id == job_id).first()
         if not job:
@@ -143,25 +146,27 @@ def run_transfer_job(job_id: int) -> None:
 
         def progress(bytes_written: int) -> None:
             nonlocal last_speed_sample_at, last_speed_sample_bytes, transferred_since_commit
-            job.transferred_bytes += bytes_written
-            transferred_since_commit += bytes_written
-            if transferred_since_commit >= PROGRESS_COMMIT_BYTES:
-                now = utc_now()
-                if last_speed_sample_at is None:
-                    last_speed_sample_at = comparable_datetime(job.started_at) if job.started_at else now
-                    last_speed_sample_bytes = job.transferred_bytes - transferred_since_commit
-                elapsed = max((now - last_speed_sample_at).total_seconds(), 0.001)
-                bytes_delta = max(job.transferred_bytes - last_speed_sample_bytes, 0)
-                job.speed_bytes_per_second = int(bytes_delta / elapsed)
-                job.last_progress_at = now
-                last_speed_sample_at = now
-                last_speed_sample_bytes = job.transferred_bytes
-                transferred_since_commit = 0
-                db.commit()
+            with progress_lock:
+                job.transferred_bytes += bytes_written
+                transferred_since_commit += bytes_written
+                if transferred_since_commit >= PROGRESS_COMMIT_BYTES:
+                    now = utc_now()
+                    if last_speed_sample_at is None:
+                        last_speed_sample_at = comparable_datetime(job.started_at) if job.started_at else now
+                        last_speed_sample_bytes = job.transferred_bytes - transferred_since_commit
+                    elapsed = max((now - last_speed_sample_at).total_seconds(), 0.001)
+                    bytes_delta = max(job.transferred_bytes - last_speed_sample_bytes, 0)
+                    job.speed_bytes_per_second = int(bytes_delta / elapsed)
+                    job.last_progress_at = now
+                    last_speed_sample_at = now
+                    last_speed_sample_bytes = job.transferred_bytes
+                    transferred_since_commit = 0
+                    db.commit()
 
         def should_cancel() -> bool:
-            status_value = db.query(TransferJob.status).filter(TransferJob.id == job_id).scalar()
-            return status_value == "cancelling"
+            with cancel_lock:
+                status_value = db.query(TransferJob.status).filter(TransferJob.id == job_id).scalar()
+                return status_value == "cancelling"
 
         result = transfer_file_paths(
             source_device=source_target,
