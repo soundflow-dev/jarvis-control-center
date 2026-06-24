@@ -144,7 +144,7 @@ export function FileExplorer({ device, onClose, clipboard, onClipboardSet, onCli
   const pasteTarget = selectedEntries.length === 1 && selectedEntries[0].type === "directory" ? selectedEntries[0].name : "this folder"
 
   return (
-    <section className={embedded ? "flex min-h-[620px] flex-col overflow-hidden rounded-lg border border-line bg-surface" : "fixed inset-0 z-20 flex flex-col bg-surface"}>
+    <section className={embedded ? "flex h-[calc(100vh-9rem)] min-h-[620px] flex-col overflow-hidden rounded-lg border border-line bg-surface" : "fixed inset-0 z-20 flex flex-col bg-surface"}>
       <header className="flex flex-col gap-3 border-b border-line bg-panel px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold text-ink">{device.name} files</h2>
