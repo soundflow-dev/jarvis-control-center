@@ -114,26 +114,29 @@ def delete_smb_path(device: Device, path: str) -> None:
     if relative == ".":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Refusing to delete the share root.")
     target = _unc(device, relative)
-    delete_smb_tree(device, relative, target)
+    delete_smb_tree(target)
+    if smbclient.path.exists(target):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"SMB delete failed: path still exists after delete: {relative}")
 
 
-def delete_smb_tree(device: Device, relative_path: str, target: str | None = None) -> None:
-    target = target or _unc(device, _relative(relative_path))
-    try:
-        entries = list(smbclient.scandir(target))
-    except OSError as scan_exc:
+def delete_smb_tree(target: str) -> None:
+    def raise_walk_error(exc: OSError) -> None:
+        raise exc
+
+    if not smbclient.path.isdir(target):
         try:
             smbclient.remove(target)
             return
-        except OSError as remove_exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"SMB delete failed: {remove_exc}; scan failed: {scan_exc}") from remove_exc
+        except OSError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"SMB file delete failed: {exc}") from exc
 
-    for entry in entries:
-        child_relative = entry.name if relative_path == "." else f"{relative_path}/{entry.name}"
-        delete_smb_tree(device, child_relative)
     try:
+        for dirpath, dirnames, filenames in smbclient.walk(target, topdown=False, onerror=raise_walk_error):
+            for filename in filenames:
+                smbclient.remove(ntpath.join(dirpath, filename))
+            for dirname in dirnames:
+                smbclient.rmdir(ntpath.join(dirpath, dirname))
         smbclient.rmdir(target)
-        return
     except OSError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"SMB folder delete failed: {exc}") from exc
 

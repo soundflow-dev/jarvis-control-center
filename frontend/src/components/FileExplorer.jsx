@@ -28,9 +28,11 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
   const [busy, setBusy] = useState(false)
   const [selectedPaths, setSelectedPaths] = useState([])
 
-  async function load(nextPath = path) {
+  async function load(nextPath = path, options = {}) {
     setBusy(true)
-    setMessage("")
+    if (!options.keepMessage) {
+      setMessage("")
+    }
     try {
       const result = await api.listFiles(targetType, device.id, nextPath)
       setListing(result)
@@ -54,7 +56,7 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
     setMessage("")
     try {
       await api.mkdir(targetType, device.id, joinPath(path, name))
-      await load(path)
+      await load(path, { keepMessage: true })
     } catch (err) {
       setMessage(err.message)
     } finally {
@@ -69,7 +71,7 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
     setMessage("")
     try {
       await api.renamePath(targetType, device.id, entry.path, joinPath(path, nextName))
-      await load(path)
+      await load(path, { keepMessage: true })
     } catch (err) {
       setMessage(err.message)
     } finally {
@@ -82,9 +84,9 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
     setBusy(true)
     setMessage("")
     try {
-      await api.deletePath(targetType, device.id, entry.path)
-      await load(path)
-      setMessage(`${entry.name} deleted.`)
+      const result = await api.deletePath(targetType, device.id, entry.path)
+      setMessage(`Deleted ${result.path ?? entry.name}.`)
+      await load(path, { keepMessage: true })
     } catch (err) {
       setMessage(err.message)
     } finally {
@@ -101,8 +103,8 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
       for (const selectedPath of selectedPaths) {
         await api.deletePath(targetType, device.id, selectedPath)
       }
-      await load(path)
       setMessage("Selected items deleted.")
+      await load(path, { keepMessage: true })
     } catch (err) {
       setMessage(err.message)
     } finally {

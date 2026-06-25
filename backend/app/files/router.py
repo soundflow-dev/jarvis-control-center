@@ -154,7 +154,7 @@ def delete_path(
 ):
     device = get_device(db, user, device_id)
     _delete_target(device, payload.path)
-    return {"ok": True}
+    return {"ok": True, "path": payload.path}
 
 
 @router.post("/shares/{share_id}/delete")
@@ -166,7 +166,7 @@ def delete_share_path(
 ):
     share = get_device_share(db, user, share_id)
     _delete_target(share, payload.path)
-    return {"ok": True}
+    return {"ok": True, "path": payload.path}
 
 
 @router.get("/{device_id}/download")
