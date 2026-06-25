@@ -17,6 +17,7 @@ from app.devices.service import (
     list_device_shares,
     list_devices,
     test_device_connection,
+    test_nfs_device,
     test_smb_device,
     update_device,
     update_device_share,
@@ -85,4 +86,7 @@ def test_share(share_id: int, db: DbSession = Depends(get_db), user: User = Depe
     if share.connection_type == "smb":
         ok, message = test_smb_device(share)
         return DeviceTestResponse(ok=ok, status=message)
-    return DeviceTestResponse(ok=False, status="NFS browsing/testing is not implemented yet.")
+    if share.connection_type == "nfs":
+        ok, message = test_nfs_device(share)
+        return DeviceTestResponse(ok=ok, status=message)
+    return DeviceTestResponse(ok=False, status="No test is available for this share.")

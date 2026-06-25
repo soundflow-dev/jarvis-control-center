@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session as DbSession
 from app.database.models import Device, DeviceShare, User
 from app.devices.paths import parse_connection_path
 from app.devices.schemas import DeviceCreate, DeviceShareCreate, DeviceShareUpdate, DeviceUpdate
+from app.files.nfs import list_nfs_directory
 from app.files.smb import list_smb_directory
 from app.security.crypto import decrypt_json, encrypt_json
 
@@ -221,9 +222,19 @@ def test_smb_device(device: Device) -> tuple[bool, str]:
         return False, f"SMB share connection failed: {exc}"
 
 
+def test_nfs_device(device: Device) -> tuple[bool, str]:
+    try:
+        list_nfs_directory(device, ".")
+        return True, "NFS share connection successful."
+    except Exception as exc:
+        return False, f"NFS share connection failed: {exc}"
+
+
 def test_device_connection(device: Device) -> tuple[bool, str]:
     if device.connection_type == "ssh_sftp":
         return test_ssh_device(device)
     if device.connection_type == "smb":
         return test_smb_device(device)
-    return False, "NFS connections are saved, but NFS browsing/testing is not implemented yet."
+    if device.connection_type == "nfs":
+        return test_nfs_device(device)
+    return False, "No test is available for this machine."

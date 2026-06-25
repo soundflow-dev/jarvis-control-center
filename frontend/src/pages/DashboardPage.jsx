@@ -484,7 +484,7 @@ export function DashboardPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button className="btn-secondary min-h-9 px-3" onClick={() => testShare(share)}>Test</button>
-                  <button className="btn-secondary min-h-9 px-3" onClick={() => openShareFiles(share)} disabled={share.connection_type !== "smb"}>Files</button>
+                  <button className="btn-secondary min-h-9 px-3" onClick={() => openShareFiles(share)} disabled={!["smb", "nfs"].includes(share.connection_type)}>Files</button>
                   <button className="btn-secondary min-h-9 px-3" onClick={() => startEditShare(share)}>
                     <Pencil size={15} aria-hidden="true" />
                     Edit
@@ -513,7 +513,7 @@ export function DashboardPage() {
           <Terminal size={17} aria-hidden="true" />
           Terminal
         </button>
-        <button className="btn-secondary px-3" onClick={() => openFiles(device)} disabled={!["ssh_sftp", "smb"].includes(device.connection_type)} title={["ssh_sftp", "smb"].includes(device.connection_type) ? "Open files" : "Enable SSH/SFTP or add a share to browse files"}>
+        <button className="btn-secondary px-3" onClick={() => openFiles(device)} disabled={!["ssh_sftp", "smb", "nfs"].includes(device.connection_type)} title={["ssh_sftp", "smb", "nfs"].includes(device.connection_type) ? "Open files" : "Enable SSH/SFTP or add a share to browse files"}>
           <FolderOpen size={17} aria-hidden="true" />
           Files
         </button>

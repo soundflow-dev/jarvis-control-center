@@ -20,18 +20,18 @@ This repository is an early MVP scaffold. The first boot starts empty and shows 
 - Web SSH terminal over backend WebSocket
 - SFTP file explorer with multi-select actions
 - SFTP to SFTP copy/move that copies file contents, preserves basic timestamps when possible, and ignores incompatible xattrs/ACLs
-- Initial SMB share support for listing, downloading, creating folders, renaming, deleting, and copying/moving to or from SFTP/SMB
+- Initial SMB and NFS share support for listing, downloading, creating folders, renaming, deleting, and copying/moving to or from SFTP/SMB/NFS
 - Machines can own multiple SMB/NFS share records instead of treating each share as a separate machine
 - Background transfer jobs with progress, speed, ETA, cancellation, recent history, and dismissible completed jobs
 - Cancelled jobs clean up destination files/folders created by that job when safe
-- NFS connection records are accepted as groundwork, but browsing/mounting NFS is not implemented yet
+- NFS shares are mounted inside the backend container under `/data/nfs-mounts`
 - Responsive dark UI for desktop, tablet, and phone
 - Transfer policy endpoint documenting the default "Transfers that just work" behavior
 
 ## Planned Next MVP Steps
 
-- Full NFS browsing and transfers
-- Transfer logs and cancellation controls
+- Transfer logs and per-file details
+- NFS mount health, reconnect, and advanced option presets
 - 2FA/TOTP
 - Multi-user permissions
 - Plugins
@@ -76,12 +76,21 @@ smb://10.10.20.8/Media
 
 If the machine has multiple shares, add each share under that machine. The stored SMB password is encrypted and is never sent back to the frontend after saving.
 
-NFS paths can be saved in either form below, but NFS browsing is still planned:
+NFS shares can be added with either form below:
 
 ```text
 10.10.20.8:/mnt/pool/share
 nfs://10.10.20.8/mnt/pool/share
 ```
+
+NFS browsing and transfers use Linux NFS mounts inside the backend container. The default Compose file installs `nfs-common` in the backend image and grants the backend container `SYS_ADMIN` plus `apparmor:unconfined` so it can mount exports. You can tune NFS behavior in `.env`:
+
+```env
+NFS_MOUNT_OPTIONS=rw,nfsvers=4,soft,timeo=50,retrans=2
+NFS_MOUNT_ROOT=/data/nfs-mounts
+```
+
+If a NAS only exports NFSv3, change `nfsvers=4` to `nfsvers=3`.
 
 ## Ubuntu Server Install
 
