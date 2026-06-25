@@ -4,17 +4,20 @@ import { Terminal as XTerm } from "@xterm/xterm"
 import "@xterm/xterm/css/xterm.css"
 import { X } from "lucide-react"
 
+import { useI18n } from "../i18n"
+
 function terminalUrl(deviceId) {
   const protocol = window.location.protocol === "https:" ? "wss" : "ws"
   return `${protocol}://${window.location.host}/api/ssh/${deviceId}/terminal`
 }
 
 export function SshTerminal({ device, onClose, embedded = false }) {
+  const { t } = useI18n()
   const containerRef = useRef(null)
   const socketRef = useRef(null)
   const termRef = useRef(null)
   const fitRef = useRef(null)
-  const [status, setStatus] = useState("Connecting")
+  const [status, setStatus] = useState("connecting")
 
   useEffect(() => {
     const term = new XTerm({
@@ -35,7 +38,7 @@ export function SshTerminal({ device, onClose, embedded = false }) {
     requestAnimationFrame(() => fit.fit())
     window.setTimeout(() => fit.fit(), 100)
     term.focus()
-    term.writeln(`Opening SSH terminal for ${device.name}...`)
+    term.writeln(t("terminal.opening", { name: device.name }))
 
     const socket = new WebSocket(terminalUrl(device.id))
     socketRef.current = socket
@@ -43,19 +46,19 @@ export function SshTerminal({ device, onClose, embedded = false }) {
     fitRef.current = fit
 
     socket.addEventListener("open", () => {
-      setStatus("Connected")
-      term.writeln("WebSocket connected.")
+      setStatus("connected")
+      term.writeln(t("terminal.websocketConnected"))
     })
     socket.addEventListener("message", (event) => {
       term.write(event.data)
     })
     socket.addEventListener("close", () => {
-      setStatus("Closed")
-      term.writeln("\r\nSession closed.")
+      setStatus("closed")
+      term.writeln(`\r\n${t("terminal.sessionClosed")}`)
     })
     socket.addEventListener("error", () => {
-      setStatus("Error")
-      term.writeln("\r\nTerminal connection error.")
+      setStatus("error")
+      term.writeln(`\r\n${t("terminal.connectionError")}`)
     })
 
     const disposable = term.onData((data) => {
@@ -80,11 +83,11 @@ export function SshTerminal({ device, onClose, embedded = false }) {
       <header className="flex items-center justify-between gap-3 border-b border-line bg-panel px-4 py-3">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold text-ink">{device.name}</h2>
-          <p className="truncate text-xs text-muted">{device.username}@{device.host}:{device.port} · {status}</p>
+          <p className="truncate text-xs text-muted">{device.username}@{device.host}:{device.port} · {t(`terminal.${status}`)}</p>
         </div>
-        <button className="btn-secondary px-3" onClick={onClose} title="Close terminal">
+        <button className="btn-secondary px-3" onClick={onClose} title={t("terminal.close")}>
           <X size={18} aria-hidden="true" />
-          <span className="hidden sm:inline">Close</span>
+          <span className="hidden sm:inline">{t("common.close")}</span>
         </button>
       </header>
       <div className="min-h-0 flex-1 p-2 sm:p-3">

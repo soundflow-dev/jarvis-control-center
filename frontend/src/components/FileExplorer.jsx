@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ClipboardPaste, Copy, Do
 
 import { api } from "../api/client"
 import { ConfirmDialog, TextPromptDialog } from "./ModalDialog"
+import { plural, useI18n } from "../i18n"
 
 function joinPath(base, name) {
   if (!base || base === ".") return name
@@ -17,8 +18,8 @@ function formatSize(size) {
   return `${(size / 1024 / 1024 / 1024).toFixed(1)} GB`
 }
 
-function entrySizeLabel(entry) {
-  if (entry.type === "directory") return "Folder"
+function entrySizeLabel(entry, t) {
+  if (entry.type === "directory") return t("files.folderLabel")
   return formatSize(entry.size) || "0 B"
 }
 
@@ -69,6 +70,7 @@ function filterEntries(entries, query) {
 }
 
 export function FileExplorer({ device, targetType = "device", onClose, clipboard, onClipboardSet, onClipboardClear, onJobCreated, embedded = false }) {
+  const { t } = useI18n()
   const [path, setPath] = useState(".")
   const [listing, setListing] = useState({ path: ".", parent: ".", entries: [] })
   const [message, setMessage] = useState("")
@@ -142,10 +144,10 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
 
   async function createFolder() {
     setTextPrompt({
-      title: "Create folder",
-      label: "Folder name",
+      title: t("files.createFolder"),
+      label: t("files.folderName"),
       initialValue: "",
-      confirmLabel: "Create",
+      confirmLabel: t("files.createFolder"),
       onSubmit: createFolderWithName,
     })
   }
@@ -166,10 +168,10 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
 
   async function renameEntry(entry) {
     setTextPrompt({
-      title: "Rename item",
-      label: "New name",
+      title: t("files.renameItem"),
+      label: t("files.newName"),
       initialValue: entry.name,
-      confirmLabel: "Rename",
+      confirmLabel: t("common.rename"),
       onSubmit: (nextName) => renameEntryTo(entry, nextName),
     })
   }
@@ -194,9 +196,9 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
 
   async function deleteEntry(entry) {
     setConfirmDialog({
-      title: "Delete item",
-      message: `Delete ${entry.name}?`,
-      confirmLabel: "Delete",
+      title: t("files.deleteItem"),
+      message: t("files.deleteItemMessage", { name: entry.name }),
+      confirmLabel: t("common.delete"),
       danger: true,
       onConfirm: () => deleteEntryConfirmed(entry),
     })
@@ -207,7 +209,7 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
     setMessage("")
     try {
       const result = await api.deletePath(targetType, device.id, entry.path)
-      setMessage(`Deleted ${result.path ?? entry.name}.`)
+      setMessage(t("files.deleted", { path: result.path ?? entry.name }))
       setConfirmDialog(null)
       await load(path, { keepMessage: true })
     } catch (err) {
@@ -220,9 +222,9 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
   async function deleteSelected() {
     if (selectedPaths.length === 0) return
     setConfirmDialog({
-      title: "Delete selected items",
-      message: `Delete ${selectedPaths.length} selected item${selectedPaths.length === 1 ? "" : "s"}?`,
-      confirmLabel: "Delete",
+      title: t("files.deleteSelected"),
+      message: t("files.deleteSelectedMessage", { count: selectedPaths.length, plural: plural(selectedPaths.length) }),
+      confirmLabel: t("common.delete"),
       danger: true,
       onConfirm: deleteSelectedConfirmed,
     })
@@ -236,10 +238,10 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
         try {
           await api.deletePath(targetType, device.id, selectedPath)
         } catch (err) {
-          throw new Error(`Failed deleting ${selectedPath}: ${err.message}`)
+          throw new Error(t("files.failedDeleting", { path: selectedPath, message: err.message }))
         }
       }
-      setMessage("Selected items deleted.")
+      setMessage(t("files.selectedDeleted"))
       setConfirmDialog(null)
       await load(path, { keepMessage: true })
     } catch (err) {
@@ -262,7 +264,7 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
       sourceDeviceName: device.name,
       sourcePaths: selectedPaths,
     })
-    setMessage(`${selectedPaths.length} item${selectedPaths.length === 1 ? "" : "s"} ready to ${action}. Navigate to a destination folder and paste.`)
+    setMessage(t("files.readyToAction", { count: selectedPaths.length, plural: plural(selectedPaths.length), action: action === "move" ? t("common.move").toLowerCase() : t("common.copy").toLowerCase() }))
     setSelectedPaths([])
   }
 
@@ -288,7 +290,7 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
       if (onJobCreated) {
         onJobCreated(result)
       }
-      setMessage(`${result.action === "move" ? "Move" : "Copy"} job started for ${result.source_paths.length} item${result.source_paths.length === 1 ? "" : "s"} to ${selectedDirectory ? selectedDirectory.name : "this folder"}.`)
+      setMessage(t("files.jobStarted", { action: result.action === "move" ? t("common.move") : t("common.copy"), count: result.source_paths.length, plural: plural(result.source_paths.length), target: selectedDirectory ? selectedDirectory.name : t("files.pasteThisFolder") }))
     } catch (err) {
       setMessage(err.message)
     } finally {
@@ -322,19 +324,19 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
   const allSelected = visibleEntries.length > 0 && visibleEntries.every((entry) => selectedPaths.includes(entry.path))
   const selectedEntries = listing.entries.filter((entry) => selectedPaths.includes(entry.path))
   const selectedFileBytes = selectedEntries.reduce((total, entry) => total + (entry.type === "file" ? entry.size ?? 0 : 0), 0)
-  const pasteTarget = selectedEntries.length === 1 && selectedEntries[0].type === "directory" ? selectedEntries[0].name : "this folder"
+  const pasteTarget = selectedEntries.length === 1 && selectedEntries[0].type === "directory" ? selectedEntries[0].name : t("files.pasteThisFolder")
 
   return (
     <section className={embedded ? "flex h-[calc(100vh-9rem)] min-h-[620px] flex-col overflow-hidden rounded-lg border border-line bg-surface" : "fixed inset-0 z-20 flex flex-col bg-surface"}>
       <header className="flex flex-col gap-3 border-b border-line bg-panel px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold text-ink">{device.name} files</h2>
+          <h2 className="truncate text-sm font-semibold text-ink">{t("files.title", { name: device.name })}</h2>
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted">
             {crumbs.map((crumb, index) => (
               <span className="flex min-w-0 items-center gap-1" key={crumb.path}>
                 {index > 0 && <span className="text-muted/70">/</span>}
                 <button className="max-w-[9rem] truncate rounded px-1 py-0.5 text-left hover:bg-surface hover:text-ink" onClick={() => load(crumb.path)} title={crumb.path}>
-                  {crumb.label}
+                  {crumb.path === "." ? t("files.root") : crumb.label}
                 </button>
               </span>
             ))}
@@ -342,24 +344,24 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
         </div>
         <div className="flex flex-wrap gap-2">
           <div className="flex gap-1">
-            <button className="btn-secondary px-2" onClick={goBack} disabled={busy || historyState.index <= 0} title="Back">
+            <button className="btn-secondary px-2" onClick={goBack} disabled={busy || historyState.index <= 0} title={t("common.back")}>
               <ChevronLeft size={17} aria-hidden="true" />
             </button>
-            <button className="btn-secondary px-2" onClick={goForward} disabled={busy || historyState.index >= historyState.items.length - 1} title="Forward">
+            <button className="btn-secondary px-2" onClick={goForward} disabled={busy || historyState.index >= historyState.items.length - 1} title={t("common.forward")}>
               <ChevronRight size={17} aria-hidden="true" />
             </button>
           </div>
-          <button className="btn-secondary px-3" onClick={() => load(path)} disabled={busy} title="Refresh">
+          <button className="btn-secondary px-3" onClick={() => load(path)} disabled={busy} title={t("common.refresh")}>
             <RefreshCw size={17} aria-hidden="true" />
-            <span className="hidden sm:inline">Refresh</span>
+            <span className="hidden sm:inline">{t("common.refresh")}</span>
           </button>
-          <button className="btn-secondary px-3" onClick={createFolder} title="Create folder">
+          <button className="btn-secondary px-3" onClick={createFolder} title={t("files.createFolder")}>
             <FolderPlus size={17} aria-hidden="true" />
-            <span className="hidden sm:inline">Folder</span>
+            <span className="hidden sm:inline">{t("common.folder")}</span>
           </button>
-          <button className="btn-secondary px-3" onClick={onClose} title="Close files">
+          <button className="btn-secondary px-3" onClick={onClose} title={t("files.closeFiles")}>
             <X size={17} aria-hidden="true" />
-            <span className="hidden sm:inline">Close</span>
+            <span className="hidden sm:inline">{t("common.close")}</span>
           </button>
         </div>
       </header>
@@ -372,10 +374,10 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <label className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} aria-hidden="true" />
-                <input className="input min-h-10 pl-9" value={filterQuery} onChange={(event) => setFilterQuery(event.target.value)} placeholder="Filter this folder" />
+                <input className="input min-h-10 pl-9" value={filterQuery} onChange={(event) => setFilterQuery(event.target.value)} placeholder={t("files.filterPlaceholder")} />
               </label>
               <p className="text-xs text-muted">
-                {visibleEntries.length} of {listing.entries.length} items
+                {t("files.itemCount", { visible: visibleEntries.length, total: listing.entries.length })}
               </p>
             </div>
           )}
@@ -383,15 +385,15 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
           {clipboard && (
             <div className="mb-3 flex flex-col gap-3 rounded-md border border-signal/50 bg-teal-950/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-ink">
-                {clipboard.action === "move" ? "Move" : "Copy"} {clipboard.sourcePaths.length} item{clipboard.sourcePaths.length === 1 ? "" : "s"} from {clipboard.sourceDeviceName}
+                {t("files.clipboardSummary", { action: clipboard.action === "move" ? t("common.move") : t("common.copy"), count: clipboard.sourcePaths.length, plural: plural(clipboard.sourcePaths.length), source: clipboard.sourceDeviceName })}
               </p>
               <div className="flex flex-wrap gap-2">
                 <button className="btn-primary min-h-9 px-3" onClick={pasteHere} disabled={busy}>
                   <ClipboardPaste size={15} aria-hidden="true" />
-                  Paste to {pasteTarget}
+                  {t("files.pasteTo", { target: pasteTarget })}
                 </button>
                 <button className="btn-secondary min-h-9 px-3" onClick={onClipboardClear}>
-                  Clear
+                  {t("files.clear")}
                 </button>
               </div>
             </div>
@@ -400,23 +402,23 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
           {selectedCount > 0 && (
             <div className="flex flex-col gap-3 rounded-md border border-line bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-ink">
-                {selectedCount} selected{selectedFileBytes ? ` · ${formatSize(selectedFileBytes)}` : ""}
+                {t("files.selected", { count: selectedCount, plural: plural(selectedCount) })}{selectedFileBytes ? ` · ${formatSize(selectedFileBytes)}` : ""}
               </p>
               <div className="flex flex-wrap gap-2">
                 <button className="btn-secondary min-h-9 px-3" onClick={() => copySelected("copy")} disabled={busy}>
                   <Copy size={15} aria-hidden="true" />
-                  Copy
+                  {t("common.copy")}
                 </button>
                 <button className="btn-secondary min-h-9 px-3" onClick={() => copySelected("move")} disabled={busy}>
                   <MoveRight size={15} aria-hidden="true" />
-                  Move
+                  {t("common.move")}
                 </button>
                 <button className="btn-danger min-h-9 px-3" onClick={deleteSelected} disabled={busy}>
                   <Trash2 size={15} aria-hidden="true" />
-                  Delete
+                  {t("common.delete")}
                 </button>
                 <button className="btn-secondary min-h-9 px-3" onClick={() => setSelectedPaths([])}>
-                  Clear
+                  {t("files.clear")}
                 </button>
               </div>
             </div>
@@ -427,21 +429,21 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
           {visibleEntries.length > 0 && (
             <label className="flex items-center gap-3 border-b border-line px-4 py-3 text-sm text-muted">
               <input className="h-5 w-5 rounded border-line bg-surface accent-teal-400" type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
-              Select visible
+              {t("files.selectVisible")}
             </label>
           )}
           {visibleEntries.length > 0 && (
             <div className="hidden border-b border-line bg-surface/60 px-4 py-2 text-xs font-semibold uppercase text-muted md:grid md:grid-cols-[minmax(0,1fr)_120px_180px_auto]">
               <button className="flex items-center gap-1 text-left hover:text-ink" onClick={() => toggleSort("name")}>
-                Name {sortIcon("name")}
+                {t("common.name")} {sortIcon("name")}
               </button>
               <button className="flex items-center justify-end gap-1 text-right hover:text-ink" onClick={() => toggleSort("size")}>
-                Size {sortIcon("size")}
+                {t("common.size")} {sortIcon("size")}
               </button>
               <button className="flex items-center gap-1 text-left hover:text-ink" onClick={() => toggleSort("modified")}>
-                Modified {sortIcon("modified")}
+                {t("common.modified")} {sortIcon("modified")}
               </button>
-              <span className="text-right">Actions</span>
+              <span className="text-right">{t("common.actions")}</span>
             </div>
           )}
           <button className="flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left text-sm text-ink hover:bg-surface" onClick={() => load(listing.parent)} disabled={path === "." || path === "/"}>
@@ -457,33 +459,33 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium text-ink">{entry.name}</span>
                     <span className="mt-0.5 block truncate text-xs text-muted md:hidden">
-                      {entrySizeLabel(entry)}{entry.modified_at ? ` · ${formatModified(entry.modified_at)}` : ""}
+                      {entrySizeLabel(entry, t)}{entry.modified_at ? ` · ${formatModified(entry.modified_at)}` : ""}
                     </span>
                   </span>
                 </button>
               </div>
-              <span className="hidden text-right text-xs text-muted md:block">{entrySizeLabel(entry)}</span>
+              <span className="hidden text-right text-xs text-muted md:block">{entrySizeLabel(entry, t)}</span>
               <span className="hidden text-xs text-muted md:block">{formatModified(entry.modified_at)}</span>
               <div className="flex justify-end gap-2">
                 {entry.type === "file" && (
-                  <button className="btn-secondary min-h-9 px-2" onClick={() => downloadEntry(entry)} title="Download">
+                  <button className="btn-secondary min-h-9 px-2" onClick={() => downloadEntry(entry)} title={t("files.download")}>
                     <Download size={15} aria-hidden="true" />
                   </button>
                 )}
-                <button className="btn-secondary min-h-9 px-2" onClick={() => renameEntry(entry)} title="Rename">
-                  Rename
+                <button className="btn-secondary min-h-9 px-2" onClick={() => renameEntry(entry)} title={t("common.rename")}>
+                  {t("common.rename")}
                 </button>
-                <button className="btn-danger min-h-9 px-2" onClick={() => deleteEntry(entry)} title="Delete">
+                <button className="btn-danger min-h-9 px-2" onClick={() => deleteEntry(entry)} title={t("common.delete")}>
                   <Trash2 size={15} aria-hidden="true" />
                 </button>
               </div>
             </div>
           ))}
           {listing.entries.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-muted">Empty folder</p>
+            <p className="px-4 py-8 text-center text-sm text-muted">{t("files.empty")}</p>
           )}
           {listing.entries.length > 0 && visibleEntries.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-muted">No matching items</p>
+            <p className="px-4 py-8 text-center text-sm text-muted">{t("files.noMatches")}</p>
           )}
         </div>
       </div>

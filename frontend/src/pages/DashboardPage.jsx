@@ -5,6 +5,7 @@ import { api } from "../api/client"
 import { FileExplorer } from "../components/FileExplorer"
 import { ConfirmDialog } from "../components/ModalDialog"
 import { SshTerminal } from "../components/SshTerminal"
+import { plural, useI18n } from "../i18n"
 
 const emptyForm = {
   name: "",
@@ -56,7 +57,7 @@ function averageJobSpeed(job) {
 }
 
 function formatDuration(seconds) {
-  if (!Number.isFinite(seconds) || seconds <= 0) return "calculating ETA"
+  if (!Number.isFinite(seconds) || seconds <= 0) return null
   const rounded = Math.round(seconds)
   const hours = Math.floor(rounded / 3600)
   const minutes = Math.floor((rounded % 3600) / 60)
@@ -73,6 +74,7 @@ function jobEta(job, speed) {
 }
 
 export function DashboardPage() {
+  const { t } = useI18n()
   const [devices, setDevices] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [showForm, setShowForm] = useState(false)
@@ -150,7 +152,7 @@ export function DashboardPage() {
       active: device.active,
     })
     setShowForm(true)
-    setMessage("Secrets are not shown after saving. Enter a new password or SSH key only if you want to replace it.")
+    setMessage(t("dashboard.secretsHidden"))
   }
 
   function cancelForm() {
@@ -160,14 +162,14 @@ export function DashboardPage() {
   }
 
   function validateMachineForm() {
-    if (!form.name.trim()) return "Friendly name is required."
-    if (!form.host.trim()) return "Host/IP is required."
+    if (!form.name.trim()) return t("dashboard.nameRequired")
+    if (!form.host.trim()) return t("dashboard.hostRequired")
     if (form.connection_type === "ssh_sftp") {
       const port = Number(form.port)
-      if (!Number.isInteger(port) || port < 1 || port > 65535) return "SSH port must be between 1 and 65535."
-      if (!form.username.trim()) return "SSH user is required."
-      if (form.auth_method === "password" && !editingDevice && !form.password) return "Password is required."
-      if (form.auth_method === "ssh_key" && !editingDevice && !form.private_key.trim()) return "Private key is required."
+      if (!Number.isInteger(port) || port < 1 || port > 65535) return t("dashboard.sshPortInvalid")
+      if (!form.username.trim()) return t("dashboard.sshUserRequired")
+      if (form.auth_method === "password" && !editingDevice && !form.password) return t("dashboard.passwordRequired")
+      if (form.auth_method === "ssh_key" && !editingDevice && !form.private_key.trim()) return t("dashboard.privateKeyRequired")
     }
     return ""
   }
@@ -203,7 +205,7 @@ export function DashboardPage() {
           payload.private_key = basePayload.private_key
         }
         await api.updateDevice(editingDevice.id, payload)
-        setMessage("Device updated.")
+        setMessage(t("dashboard.deviceUpdated"))
       } else {
         const payload = {
           ...basePayload,
@@ -211,7 +213,7 @@ export function DashboardPage() {
           private_key: basePayload.auth_method === "ssh_key" ? basePayload.private_key : null,
         }
         await api.createDevice(payload)
-        setMessage("Device added.")
+        setMessage(t("dashboard.deviceAdded"))
       }
       setForm(emptyForm)
       setEditingDevice(null)
@@ -247,7 +249,7 @@ export function DashboardPage() {
       setFilesDevice(null)
     }
     await loadDevices()
-    setMessage("Device removed.")
+    setMessage(t("dashboard.deviceRemoved"))
   }
 
   function openTerminal(device) {
@@ -323,7 +325,7 @@ export function DashboardPage() {
       password: "",
       active: share.active,
     })
-    setMessage("Share secrets are not shown after saving. Enter a new password only if you want to replace it.")
+    setMessage(t("shares.secretsHidden"))
   }
 
   function cancelShareEdit() {
@@ -333,11 +335,11 @@ export function DashboardPage() {
   }
 
   function validateShareForm() {
-    if (!shareForm.name.trim()) return "Share name is required."
-    if (!shareForm.connection_url.trim()) return "Share path is required."
+    if (!shareForm.name.trim()) return t("shares.nameRequired")
+    if (!shareForm.connection_url.trim()) return t("shares.pathRequired")
     const port = Number(shareForm.port)
-    if (!Number.isInteger(port) || port < 1 || port > 65535) return "Share port must be between 1 and 65535."
-    if (shareForm.auth_method === "password" && !editingShare && !shareForm.password) return "Share password is required."
+    if (!Number.isInteger(port) || port < 1 || port > 65535) return t("shares.portInvalid")
+    if (shareForm.auth_method === "password" && !editingShare && !shareForm.password) return t("shares.passwordRequired")
     return ""
   }
 
@@ -367,7 +369,7 @@ export function DashboardPage() {
       await loadDevices()
       const shares = await api.listShares(sharesDevice.id)
       setSharesDevice((current) => current ? { ...current, shares } : current)
-      setMessage(editingShare ? "Share updated." : "Share added.")
+      setMessage(editingShare ? t("shares.updated") : t("shares.added"))
     } catch (err) {
       setMessage(err.message)
     } finally {
@@ -409,42 +411,43 @@ export function DashboardPage() {
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Activity className="shrink-0 text-teal-300" size={18} aria-hidden="true" />
-            <h3 className="truncate text-sm font-semibold text-ink">Transfers</h3>
+            <h3 className="truncate text-sm font-semibold text-ink">{t("transfers.title")}</h3>
           </div>
-          <button className="btn-secondary min-h-9 px-3" onClick={loadTransferJobs}>Refresh</button>
+          <button className="btn-secondary min-h-9 px-3" onClick={loadTransferJobs}>{t("common.refresh")}</button>
         </div>
         <div className="space-y-3">
           {transferJobs.slice(0, 5).map((job) => {
             const progress = jobProgress(job)
-            const verb = job.action === "move" ? "Move" : "Copy"
+            const verb = job.action === "move" ? t("common.move") : t("common.copy")
             const speed = job.status === "completed" ? averageJobSpeed(job) : job.speed_bytes_per_second
             const eta = jobEta(job, speed)
             const canCancel = ["pending", "running", "cancelling"].includes(job.status)
             const canDismiss = ["completed", "failed", "cancelled"].includes(job.status)
+            const itemPlural = plural(job.source_paths.length)
             return (
               <article key={job.id} className="rounded-md border border-line bg-surface p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-ink">
-                      {verb} {job.source_paths.length} item{job.source_paths.length === 1 ? "" : "s"} from {job.source_device_name} to {job.destination_device_name}
+                      {t("transfers.jobTitle", { verb, count: job.source_paths.length, plural: itemPlural, source: job.source_device_name, destination: job.destination_device_name })}
                     </p>
                     <p className="mt-1 truncate text-xs text-muted">
                       {job.status === "failed" || job.status === "cancelled"
                         ? job.error
-                        : `${formatBytes(job.transferred_bytes)} / ${formatBytes(job.total_bytes)} · ${speed ? formatSpeed(speed) : "measuring speed"}${eta ? ` · ETA ${eta}` : ""} · ${job.copied_files || 0}/${job.total_files || 0} files`}
+                        : `${formatBytes(job.transferred_bytes)} / ${formatBytes(job.total_bytes)} · ${speed ? formatSpeed(speed) : t("transfers.measuringSpeed")}${eta ? ` · ${t("transfers.eta", { value: eta })}` : ""} · ${t("transfers.files", { copied: job.copied_files || 0, total: job.total_files || 0 })}`}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <span className={`rounded-md px-2 py-1 text-xs font-semibold ${job.status === "completed" ? "bg-teal-950 text-teal-200" : job.status === "failed" || job.status === "cancelled" ? "bg-red-950 text-red-100" : "bg-slate-800 text-slate-200"}`}>
-                      {job.status}
+                      {t(`transfers.status.${job.status}`)}
                     </span>
                     {canCancel && (
                       <button className="btn-danger min-h-9 px-3 text-xs" onClick={() => cancelTransferJob(job)} disabled={cancellingJobId === job.id || job.status === "cancelling"}>
-                        {job.status === "cancelling" || cancellingJobId === job.id ? "Cancelling" : "Cancel"}
+                        {job.status === "cancelling" || cancellingJobId === job.id ? t("transfers.cancelling") : t("common.cancel")}
                       </button>
                     )}
                     {canDismiss && (
-                      <button className="btn-secondary min-h-9 px-2" onClick={() => dismissTransferJob(job)} title="Hide transfer">
+                      <button className="btn-secondary min-h-9 px-2" onClick={() => dismissTransferJob(job)} title={t("transfers.hide")}>
                         <X size={15} aria-hidden="true" />
                       </button>
                     )}
@@ -469,50 +472,50 @@ export function DashboardPage() {
       <section className="rounded-lg border border-line bg-panel">
         <header className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-ink">{device.name} shares</h3>
+            <h3 className="truncate text-sm font-semibold text-ink">{t("shares.title", { name: device.name })}</h3>
             <p className="truncate text-xs text-muted">{device.host}</p>
           </div>
           <button className="btn-secondary px-3" onClick={closeWorkspace}>
             <X size={17} aria-hidden="true" />
-            Close
+            {t("common.close")}
           </button>
         </header>
         <div className="space-y-4 p-4">
           <form className="grid gap-3 rounded-md border border-line bg-surface p-3 md:grid-cols-2 xl:grid-cols-3" onSubmit={saveShare} noValidate>
             <div>
-              <label className="label" htmlFor="share-name">Name</label>
+              <label className="label" htmlFor="share-name">{t("common.name")}</label>
               <input className="field mt-1" id="share-name" name="name" value={shareForm.name} onChange={updateShare} required />
             </div>
             <div>
-              <label className="label" htmlFor="share-type">Type</label>
+              <label className="label" htmlFor="share-type">{t("common.type")}</label>
               <select className="field mt-1" id="share-type" name="connection_type" value={shareForm.connection_type} onChange={updateShare}>
                 <option value="smb">SMB</option>
               </select>
             </div>
             <div>
-              <label className="label" htmlFor="share-path">Share path</label>
+              <label className="label" htmlFor="share-path">{t("shares.path")}</label>
               <input className="field mt-1" id="share-path" name="connection_url" value={shareForm.connection_url} onChange={updateShare} placeholder={`smb://${device.host}/Share`} required />
             </div>
             <div>
-              <label className="label" htmlFor="share-port">Port</label>
+              <label className="label" htmlFor="share-port">{t("common.port")}</label>
               <input className="field mt-1" id="share-port" name="port" type="number" min="1" max="65535" value={shareForm.port} onChange={updateShare} required />
             </div>
             {shareForm.connection_type === "smb" && (
               <>
                 <div>
-                  <label className="label" htmlFor="share-user">User</label>
+                  <label className="label" htmlFor="share-user">{t("common.user")}</label>
                   <input className="field mt-1" id="share-user" name="username" value={shareForm.username} onChange={updateShare} />
                 </div>
                 <div>
-                  <label className="label" htmlFor="share-password">Password</label>
-                  <input className="field mt-1" id="share-password" name="password" type="password" value={shareForm.password} onChange={updateShare} required={shareForm.auth_method === "password" && !editingShare} placeholder={editingShare ? "Leave blank to keep current password" : ""} />
+                  <label className="label" htmlFor="share-password">{t("common.password")}</label>
+                  <input className="field mt-1" id="share-password" name="password" type="password" value={shareForm.password} onChange={updateShare} required={shareForm.auth_method === "password" && !editingShare} placeholder={editingShare ? t("dashboard.leavePassword") : ""} />
                 </div>
               </>
             )}
             <div className="flex items-end gap-3 md:col-span-2 xl:col-span-3">
-              <button className="btn-primary" disabled={shareBusy}>{shareBusy ? "Saving..." : editingShare ? "Save share" : "Add share"}</button>
+              <button className="btn-primary" disabled={shareBusy}>{shareBusy ? t("common.saving") : editingShare ? t("shares.save") : t("shares.add")}</button>
               {editingShare && (
-                <button type="button" className="btn-secondary" onClick={cancelShareEdit}>Cancel</button>
+                <button type="button" className="btn-secondary" onClick={cancelShareEdit}>{t("common.cancel")}</button>
               )}
             </div>
           </form>
@@ -525,11 +528,11 @@ export function DashboardPage() {
                   <p className="truncate text-xs text-muted">{share.connection_url}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button className="btn-secondary min-h-9 px-3" onClick={() => testShare(share)}>Test</button>
-                  <button className="btn-secondary min-h-9 px-3" onClick={() => openShareFiles(share)} disabled={share.connection_type !== "smb"}>Files</button>
+                  <button className="btn-secondary min-h-9 px-3" onClick={() => testShare(share)}>{t("common.test")}</button>
+                  <button className="btn-secondary min-h-9 px-3" onClick={() => openShareFiles(share)} disabled={share.connection_type !== "smb"}>{t("common.files")}</button>
                   <button className="btn-secondary min-h-9 px-3" onClick={() => startEditShare(share)}>
                     <Pencil size={15} aria-hidden="true" />
-                    Edit
+                    {t("common.edit")}
                   </button>
                   <button className="btn-danger min-h-9 px-3" onClick={() => removeShare(share)}>
                     <Trash2 size={15} aria-hidden="true" />
@@ -537,7 +540,7 @@ export function DashboardPage() {
                 </div>
               </article>
             ))}
-            {shares.length === 0 && <p className="rounded-md border border-dashed border-line px-4 py-8 text-center text-sm text-muted">No shares added for this machine.</p>}
+            {shares.length === 0 && <p className="rounded-md border border-dashed border-line px-4 py-8 text-center text-sm text-muted">{t("shares.empty")}</p>}
           </div>
         </div>
       </section>
@@ -549,23 +552,23 @@ export function DashboardPage() {
       <div className={compact ? "grid grid-cols-2 gap-2" : "mt-4 grid grid-cols-2 gap-2"}>
         <button className="btn-secondary px-3" onClick={() => openShares(device)}>
           <FolderOpen size={17} aria-hidden="true" />
-          Shares
+          {t("common.shares")}
         </button>
         <button className="btn-secondary px-3" onClick={() => openTerminal(device)} disabled={device.connection_type !== "ssh_sftp"}>
           <Terminal size={17} aria-hidden="true" />
-          Terminal
+          {t("common.terminal")}
         </button>
-        <button className="btn-secondary px-3" onClick={() => openFiles(device)} disabled={!["ssh_sftp", "smb"].includes(device.connection_type)} title={["ssh_sftp", "smb"].includes(device.connection_type) ? "Open files" : "Enable SSH/SFTP or add a share to browse files"}>
+        <button className="btn-secondary px-3" onClick={() => openFiles(device)} disabled={!["ssh_sftp", "smb"].includes(device.connection_type)} title={["ssh_sftp", "smb"].includes(device.connection_type) ? t("dashboard.openFiles") : t("dashboard.enableSshOrShare")}>
           <FolderOpen size={17} aria-hidden="true" />
-          Files
+          {t("common.files")}
         </button>
         <button className="btn-secondary px-3" onClick={() => startEdit(device)}>
           <Pencil size={17} aria-hidden="true" />
-          Edit
+          {t("common.edit")}
         </button>
         <button className="btn-danger col-span-2 px-3" onClick={() => removeDevice(device)}>
           <Trash2 size={17} aria-hidden="true" />
-          Delete
+          {t("common.delete")}
         </button>
       </div>
     )
@@ -578,11 +581,11 @@ export function DashboardPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold text-ink">{device.name}</h3>
-            <p className="truncate text-xs text-muted">{device.host}{device.connection_type === "ssh_sftp" ? `:${device.port}` : ""} · {(device.shares ?? []).length} share{(device.shares ?? []).length === 1 ? "" : "s"}</p>
+            <p className="truncate text-xs text-muted">{device.host}{device.connection_type === "ssh_sftp" ? `:${device.port}` : ""} · {t("dashboard.shareCount", { count: (device.shares ?? []).length, plural: plural((device.shares ?? []).length) })}</p>
           </div>
           <span className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${device.active ? "bg-teal-950 text-teal-200" : "bg-slate-800 text-slate-300"}`}>
             <Power size={13} aria-hidden="true" />
-            {device.active ? "Active" : "Inactive"}
+            {device.active ? t("common.active") : t("common.inactive")}
           </span>
         </div>
         <DeviceActions device={device} />
@@ -594,12 +597,12 @@ export function DashboardPage() {
     <div className="space-y-6">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-ink sm:text-3xl">Devices</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted">Add machines, optional SSH/SFTP access, and multiple SMB shares per machine.</p>
+          <h2 className="text-2xl font-semibold text-ink sm:text-3xl">{t("dashboard.devices")}</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted">{t("dashboard.intro")}</p>
         </div>
         <button className="btn-primary w-full sm:w-auto" onClick={startCreate}>
           <Plus size={18} aria-hidden="true" />
-          Add machine
+          {t("dashboard.addMachine")}
         </button>
       </section>
 
@@ -609,14 +612,14 @@ export function DashboardPage() {
 
       {showForm && (
         <section className="rounded-lg border border-line bg-panel p-4 sm:p-5">
-          <h3 className="mb-4 text-lg font-semibold text-ink">{editingDevice ? "Edit machine" : "New machine"}</h3>
+          <h3 className="mb-4 text-lg font-semibold text-ink">{editingDevice ? t("dashboard.editMachine") : t("dashboard.newMachine")}</h3>
           <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={submit} noValidate>
             <div>
-              <label className="label" htmlFor="name">Friendly name</label>
+              <label className="label" htmlFor="name">{t("dashboard.friendlyName")}</label>
               <input className="field mt-1" id="name" name="name" value={form.name} onChange={update} required />
             </div>
             <div>
-              <label className="label" htmlFor="host">Host/IP</label>
+              <label className="label" htmlFor="host">{t("dashboard.hostIp")}</label>
               <input className="field mt-1" id="host" name="host" value={form.host} onChange={update} required />
             </div>
             <label className="flex min-h-11 items-end gap-3 text-sm text-ink">
@@ -626,45 +629,45 @@ export function DashboardPage() {
                 checked={form.connection_type === "ssh_sftp"}
                 onChange={(event) => setForm({ ...form, connection_type: event.target.checked ? "ssh_sftp" : "machine", auth_method: event.target.checked ? "password" : "none", username: event.target.checked ? form.username : "", password: "", private_key: "" })}
               />
-              Enable SSH/SFTP
+              {t("dashboard.enableSsh")}
             </label>
             {form.connection_type === "ssh_sftp" && (
               <>
                 <div>
-                  <label className="label" htmlFor="port">SSH port</label>
+                  <label className="label" htmlFor="port">{t("dashboard.sshPort")}</label>
                   <input className="field mt-1" id="port" name="port" type="number" min="1" max="65535" value={form.port} onChange={update} required />
                 </div>
                 <div>
-                  <label className="label" htmlFor="username">SSH user</label>
+                  <label className="label" htmlFor="username">{t("dashboard.sshUser")}</label>
                   <input className="field mt-1" id="username" name="username" value={form.username} onChange={update} required />
                 </div>
                 <div>
-                  <label className="label" htmlFor="auth_method">SSH auth</label>
+                  <label className="label" htmlFor="auth_method">{t("dashboard.sshAuth")}</label>
                   <select className="field mt-1" id="auth_method" name="auth_method" value={form.auth_method} onChange={update}>
-                    <option value="password">Password</option>
-                    <option value="ssh_key">SSH key</option>
+                    <option value="password">{t("common.password")}</option>
+                    <option value="ssh_key">{t("dashboard.sshKey")}</option>
                   </select>
                 </div>
               </>
             )}
             {form.connection_type === "ssh_sftp" && form.auth_method === "password" ? (
               <div className="md:col-span-2 xl:col-span-3">
-                <label className="label" htmlFor="password">Password</label>
-                <input className="field mt-1" id="password" name="password" type="password" value={form.password} onChange={update} autoComplete="new-password" required={!editingDevice} placeholder={editingDevice ? "Leave blank to keep current password" : ""} />
+                <label className="label" htmlFor="password">{t("common.password")}</label>
+                <input className="field mt-1" id="password" name="password" type="password" value={form.password} onChange={update} autoComplete="new-password" required={!editingDevice} placeholder={editingDevice ? t("dashboard.leavePassword") : ""} />
               </div>
             ) : form.connection_type === "ssh_sftp" && form.auth_method === "ssh_key" ? (
               <div className="md:col-span-2 xl:col-span-3">
-                <label className="label" htmlFor="private_key">Private key</label>
-                <textarea className="field mt-1 min-h-36" id="private_key" name="private_key" value={form.private_key} onChange={update} required={!editingDevice} placeholder={editingDevice ? "Leave blank to keep current SSH key" : ""} />
+                <label className="label" htmlFor="private_key">{t("dashboard.privateKey")}</label>
+                <textarea className="field mt-1 min-h-36" id="private_key" name="private_key" value={form.private_key} onChange={update} required={!editingDevice} placeholder={editingDevice ? t("dashboard.leaveKey") : ""} />
               </div>
             ) : null}
             <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
               <input className="h-5 w-5 rounded border-line bg-surface accent-teal-400" type="checkbox" name="active" checked={form.active} onChange={update} />
-              Active
+              {t("common.active")}
             </label>
             <div className="flex flex-col gap-3 sm:flex-row md:col-span-2 xl:col-span-3">
-              <button className="btn-primary" disabled={busy}>{busy ? "Saving..." : editingDevice ? "Save changes" : "Save machine"}</button>
-              <button type="button" className="btn-secondary" onClick={cancelForm}>Cancel</button>
+              <button className="btn-primary" disabled={busy}>{busy ? t("common.saving") : editingDevice ? t("dashboard.saveChanges") : t("dashboard.saveMachine")}</button>
+              <button type="button" className="btn-secondary" onClick={cancelForm}>{t("common.cancel")}</button>
             </div>
           </form>
         </section>
@@ -674,8 +677,8 @@ export function DashboardPage() {
         <section className="grid min-h-64 place-items-center rounded-lg border border-dashed border-line bg-panel/60 p-6 text-center">
           <div>
             <Server className="mx-auto mb-3 text-muted" size={40} aria-hidden="true" />
-            <h3 className="text-lg font-semibold text-ink">No machines configured</h3>
-            <p className="mt-1 text-sm text-muted">First launch starts empty. Add your first machine when ready.</p>
+            <h3 className="text-lg font-semibold text-ink">{t("dashboard.noMachines")}</h3>
+            <p className="mt-1 text-sm text-muted">{t("dashboard.noMachinesHint")}</p>
           </div>
         </section>
       ) : (
@@ -706,8 +709,8 @@ export function DashboardPage() {
               <section className="grid min-h-[620px] place-items-center rounded-lg border border-line bg-panel/60 p-6 text-center">
                 <div>
                   <Server className="mx-auto mb-3 text-muted" size={42} aria-hidden="true" />
-                  <h3 className="text-lg font-semibold text-ink">Choose a machine action</h3>
-                  <p className="mt-1 max-w-md text-sm text-muted">Open Files or Terminal from the sidebar and keep your device list visible while you work.</p>
+                  <h3 className="text-lg font-semibold text-ink">{t("dashboard.chooseAction")}</h3>
+                  <p className="mt-1 max-w-md text-sm text-muted">{t("dashboard.chooseActionHint")}</p>
                 </div>
               </section>
             )}
@@ -716,9 +719,9 @@ export function DashboardPage() {
       )}
       {shareDeleteTarget && (
         <ConfirmDialog
-          title="Delete share"
-          message={`Delete share ${shareDeleteTarget.name}?`}
-          confirmLabel="Delete"
+          title={t("shares.deleteTitle")}
+          message={t("shares.deleteMessage", { name: shareDeleteTarget.name })}
+          confirmLabel={t("common.delete")}
           danger
           onConfirm={removeShareConfirmed}
           onCancel={() => setShareDeleteTarget(null)}

@@ -4,11 +4,13 @@ import { createRoot } from "react-dom/client"
 import "./styles.css"
 import { api } from "./api/client"
 import { Shell } from "./components/Shell"
+import { LanguageProvider, useI18n } from "./i18n"
 import { DashboardPage } from "./pages/DashboardPage"
 import { LoginPage } from "./pages/LoginPage"
 import { SetupPage } from "./pages/SetupPage"
 
 export default function App() {
+  const { t } = useI18n()
   const [loading, setLoading] = useState(true)
   const [setupStatus, setSetupStatus] = useState(null)
   const [user, setUser] = useState(null)
@@ -35,7 +37,7 @@ export default function App() {
   }
 
   if (loading) {
-    return <main className="grid min-h-screen place-items-center bg-surface text-sm text-muted">Loading...</main>
+    return <main className="grid min-h-screen place-items-center bg-surface text-sm text-muted">{t("loading")}</main>
   }
 
   if (setupStatus?.setup_required) {
@@ -56,4 +58,8 @@ export default function App() {
   )
 }
 
-createRoot(document.getElementById("root")).render(<App />)
+createRoot(document.getElementById("root")).render(
+  <LanguageProvider>
+    <App />
+  </LanguageProvider>,
+)
