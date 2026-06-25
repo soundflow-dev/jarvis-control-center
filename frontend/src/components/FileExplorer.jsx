@@ -101,7 +101,11 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
     setMessage("")
     try {
       for (const selectedPath of selectedPaths) {
-        await api.deletePath(targetType, device.id, selectedPath)
+        try {
+          await api.deletePath(targetType, device.id, selectedPath)
+        } catch (err) {
+          throw new Error(`Failed deleting ${selectedPath}: ${err.message}`)
+        }
       }
       setMessage("Selected items deleted.")
       await load(path, { keepMessage: true })

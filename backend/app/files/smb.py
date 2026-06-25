@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ntpath
 import os
+import logging
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -10,6 +11,9 @@ from fastapi import HTTPException, status
 
 from app.database.models import Device
 from app.security.crypto import decrypt_json
+
+
+logger = logging.getLogger(__name__)
 
 
 def _bool_env(name: str, default: bool) -> bool:
@@ -114,8 +118,10 @@ def delete_smb_path(device: Device, path: str) -> None:
     if relative == ".":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Refusing to delete the share root.")
     target = _unc(device, relative)
+    logger.info("Deleting SMB path %s (%s)", relative, target)
     delete_smb_tree(target)
     if smbclient.path.exists(target):
+        logger.warning("SMB path still exists after delete: %s (%s)", relative, target)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"SMB delete failed: path still exists after delete: {relative}")
 
 
@@ -125,19 +131,27 @@ def delete_smb_tree(target: str) -> None:
 
     if not smbclient.path.isdir(target):
         try:
+            logger.info("Deleting SMB file %s", target)
             smbclient.remove(target)
             return
         except OSError as exc:
+            logger.exception("SMB file delete failed for %s", target)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"SMB file delete failed: {exc}") from exc
 
     try:
         for dirpath, dirnames, filenames in smbclient.walk(target, topdown=False, onerror=raise_walk_error):
             for filename in filenames:
-                smbclient.remove(ntpath.join(dirpath, filename))
+                file_path = ntpath.join(dirpath, filename)
+                logger.info("Deleting SMB file %s", file_path)
+                smbclient.remove(file_path)
             for dirname in dirnames:
-                smbclient.rmdir(ntpath.join(dirpath, dirname))
+                dir_path = ntpath.join(dirpath, dirname)
+                logger.info("Deleting SMB folder %s", dir_path)
+                smbclient.rmdir(dir_path)
+        logger.info("Deleting SMB folder %s", target)
         smbclient.rmdir(target)
     except OSError as exc:
+        logger.exception("SMB folder delete failed for %s", target)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"SMB folder delete failed: {exc}") from exc
 
 
