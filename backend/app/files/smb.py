@@ -23,8 +23,8 @@ def _bool_env(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-SMB_REQUIRE_SIGNING = _bool_env("SMB_REQUIRE_SIGNING", False)
-SMB_AUTH_PROTOCOL = os.getenv("SMB_AUTH_PROTOCOL", "ntlm").strip().lower() or "ntlm"
+SMB_REQUIRE_SIGNING = _bool_env("SMB_REQUIRE_SIGNING", True)
+SMB_AUTH_PROTOCOL = os.getenv("SMB_AUTH_PROTOCOL", "negotiate").strip().lower() or "negotiate"
 
 
 def _new_connection_cache() -> dict:
