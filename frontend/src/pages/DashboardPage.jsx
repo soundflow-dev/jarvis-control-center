@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Activity, FolderOpen, Pencil, Plus, Power, Server, Terminal, Trash2, X } from "lucide-react"
+import { Activity, FolderOpen, Pencil, Plus, Power, PowerOff, RotateCcw, Server, Terminal, Trash2, X } from "lucide-react"
 
 import { api } from "../api/client"
 import { FileExplorer } from "../components/FileExplorer"
@@ -95,6 +95,7 @@ export function DashboardPage() {
   const [cancellingJobId, setCancellingJobId] = useState(null)
   const [shareDeleteTarget, setShareDeleteTarget] = useState(null)
   const [deviceDeleteTarget, setDeviceDeleteTarget] = useState(null)
+  const [deviceActionTarget, setDeviceActionTarget] = useState(null)
 
   async function loadDevices() {
     setDevices(await api.listDevices())
@@ -264,6 +265,23 @@ export function DashboardPage() {
       setShowForm(false)
       await loadDevices()
       setMessage(t("dashboard.deviceRemoved"))
+    } catch (err) {
+      setMessage(err.message)
+    }
+  }
+
+  function requestDeviceAction(device, action) {
+    setDeviceActionTarget({ device, action })
+  }
+
+  async function runDeviceActionConfirmed() {
+    if (!deviceActionTarget) return
+    const { device, action } = deviceActionTarget
+    setMessage("")
+    try {
+      const result = await api.runDeviceAction(device.id, action)
+      setMessage(result.status)
+      setDeviceActionTarget(null)
     } catch (err) {
       setMessage(err.message)
     }
@@ -710,8 +728,20 @@ export function DashboardPage() {
             <div className="flex flex-col gap-3 sm:flex-row md:col-span-2 xl:col-span-3">
               <button className="btn-primary" disabled={busy}>{busy ? t("common.saving") : editingDevice ? t("dashboard.saveChanges") : t("dashboard.saveMachine")}</button>
               <button type="button" className="btn-secondary" onClick={cancelForm}>{t("common.cancel")}</button>
+              {editingDevice?.connection_type === "ssh_sftp" && (
+                <div className="flex flex-col gap-3 sm:ml-auto sm:flex-row">
+                  <button type="button" className="btn-secondary" onClick={() => requestDeviceAction(editingDevice, "reboot")}>
+                    <RotateCcw size={17} aria-hidden="true" />
+                    {t("dashboard.rebootMachine")}
+                  </button>
+                  <button type="button" className="btn-danger" onClick={() => requestDeviceAction(editingDevice, "shutdown")}>
+                    <PowerOff size={17} aria-hidden="true" />
+                    {t("dashboard.shutdownMachine")}
+                  </button>
+                </div>
+              )}
               {editingDevice && (
-                <button type="button" className="btn-danger sm:ml-auto" onClick={() => removeDevice(editingDevice)}>
+                <button type="button" className={`btn-danger ${editingDevice.connection_type === "ssh_sftp" ? "" : "sm:ml-auto"}`} onClick={() => removeDevice(editingDevice)}>
                   <Trash2 size={17} aria-hidden="true" />
                   {t("dashboard.deleteMachine")}
                 </button>
@@ -783,6 +813,16 @@ export function DashboardPage() {
           danger
           onConfirm={removeDeviceConfirmed}
           onCancel={() => setDeviceDeleteTarget(null)}
+        />
+      )}
+      {deviceActionTarget && (
+        <ConfirmDialog
+          title={t(`dashboard.${deviceActionTarget.action}Title`)}
+          message={t(`dashboard.${deviceActionTarget.action}Message`, { name: deviceActionTarget.device.name })}
+          confirmLabel={t(`dashboard.${deviceActionTarget.action}Machine`)}
+          danger={deviceActionTarget.action === "shutdown"}
+          onConfirm={runDeviceActionConfirmed}
+          onCancel={() => setDeviceActionTarget(null)}
         />
       )}
     </div>

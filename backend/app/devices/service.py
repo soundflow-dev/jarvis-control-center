@@ -227,3 +227,35 @@ def test_device_connection(device: Device) -> tuple[bool, str]:
     if device.connection_type == "smb":
         return test_smb_device(device)
     return False, "No test is available for this machine."
+
+
+def run_device_power_action(device: Device, action: str) -> tuple[bool, str]:
+    if action not in {"reboot", "shutdown"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported power action.")
+    if device.connection_type != "ssh_sftp":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Power actions require SSH/SFTP access.")
+
+    commands = {
+        "reboot": "sudo -n /sbin/reboot || sudo -n reboot || /sbin/reboot || reboot",
+        "shutdown": "sudo -n /sbin/poweroff || sudo -n poweroff || sudo -n shutdown -h now || /sbin/poweroff || poweroff || shutdown -h now",
+    }
+    labels = {
+        "reboot": "Reboot",
+        "shutdown": "Shutdown",
+    }
+    client = None
+    try:
+        client = connect_ssh_device(device)
+        command = f"sh -lc {commands[action]!r}"
+        stdin, stdout, stderr = client.exec_command(command, timeout=10)
+        stdin.close()
+        code = stdout.channel.recv_exit_status()
+        error = stderr.read().decode("utf-8", errors="replace").strip()
+        if code != 0:
+            return False, f"{labels[action]} failed: {error or 'command returned a non-zero exit code'}"
+        return True, f"{labels[action]} command sent."
+    except (paramiko.SSHException, socket.error, ValueError) as exc:
+        return False, f"{labels[action]} failed: {exc}"
+    finally:
+        if client:
+            client.close()

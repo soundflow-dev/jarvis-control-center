@@ -16,6 +16,7 @@ from app.devices.service import (
     get_device_share,
     list_device_shares,
     list_devices,
+    run_device_power_action,
     test_device_connection,
     test_smb_device,
     update_device,
@@ -55,6 +56,13 @@ def remove_device(device_id: int, db: DbSession = Depends(get_db), user: User = 
 def test_device(device_id: int, db: DbSession = Depends(get_db), user: User = Depends(current_user)):
     device = get_device(db, user, device_id)
     ok, message = test_device_connection(device)
+    return DeviceTestResponse(ok=ok, status=message)
+
+
+@router.post("/{device_id}/actions/{action}", response_model=DeviceTestResponse)
+def run_device_action(device_id: int, action: str, db: DbSession = Depends(get_db), user: User = Depends(current_user)):
+    device = get_device(db, user, device_id)
+    ok, message = run_device_power_action(device, action)
     return DeviceTestResponse(ok=ok, status=message)
 
 
