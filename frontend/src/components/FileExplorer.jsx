@@ -327,8 +327,8 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
   const pasteTarget = selectedEntries.length === 1 && selectedEntries[0].type === "directory" ? selectedEntries[0].name : t("files.pasteThisFolder")
 
   return (
-    <section className={embedded ? "flex h-[calc(100vh-9rem)] min-h-[620px] flex-col overflow-hidden rounded-lg border border-line bg-surface" : "fixed inset-0 z-20 flex flex-col bg-surface"}>
-      <header className="flex flex-col gap-3 border-b border-line bg-panel px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+    <section className={embedded ? "flex h-[calc(100vh-7.5rem)] min-h-[600px] flex-col overflow-hidden rounded-md border border-line bg-panel" : "fixed inset-0 z-20 flex flex-col bg-surface"}>
+      <header className="flex flex-col gap-3 border-b border-line bg-panel px-3 py-2.5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold text-ink">{t("files.title", { name: device.name })}</h2>
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted">
@@ -367,14 +367,14 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        <div className="sticky top-0 z-10 border-b border-line bg-surface/95 p-3 backdrop-blur sm:p-4">
-          {message && <p className="mb-3 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink">{message}</p>}
+        <div className="sticky top-0 z-10 border-b border-line bg-panel/95 p-3 backdrop-blur">
+          {message && <p className="mb-3 rounded-md border border-line bg-panel px-3 py-2.5 text-sm text-ink">{message}</p>}
 
           {(listing.entries.length > 0 || filterQuery) && (
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <label className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} aria-hidden="true" />
-                <input className="input min-h-10 pl-9" value={filterQuery} onChange={(event) => setFilterQuery(event.target.value)} placeholder={t("files.filterPlaceholder")} />
+                <input className="field min-h-9 pl-9" value={filterQuery} onChange={(event) => setFilterQuery(event.target.value)} placeholder={t("files.filterPlaceholder")} />
               </label>
               <p className="text-xs text-muted">
                 {t("files.itemCount", { visible: visibleEntries.length, total: listing.entries.length })}
@@ -383,7 +383,7 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
           )}
 
           {clipboard && (
-            <div className="mb-3 flex flex-col gap-3 rounded-md border border-signal/40 bg-signal/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-3 flex flex-col gap-3 rounded-md border border-signal/40 bg-signal/10 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-ink">
                 {t("files.clipboardSummary", { action: clipboard.action === "move" ? t("common.move") : t("common.copy"), count: clipboard.sourcePaths.length, plural: plural(clipboard.sourcePaths.length), source: clipboard.sourceDeviceName })}
               </p>
@@ -400,7 +400,7 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
           )}
 
           {selectedCount > 0 && (
-            <div className="flex flex-col gap-3 rounded-md border border-line bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 rounded-md border border-line bg-panel px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-ink">
                 {t("files.selected", { count: selectedCount, plural: plural(selectedCount) })}{selectedFileBytes ? ` · ${formatSize(selectedFileBytes)}` : ""}
               </p>
@@ -425,15 +425,15 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
           )}
         </div>
 
-        <div className="m-3 overflow-hidden rounded-lg border border-line bg-panel sm:m-4">
+        <div className="m-3 overflow-hidden rounded-md border border-line bg-panel">
           {visibleEntries.length > 0 && (
-            <label className="flex items-center gap-3 border-b border-line px-4 py-3 text-sm text-muted">
+            <label className="flex items-center gap-3 border-b border-line px-3 py-2.5 text-sm text-muted">
               <input className="h-5 w-5 rounded border-line bg-surface accent-signal" type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
               {t("files.selectVisible")}
             </label>
           )}
           {visibleEntries.length > 0 && (
-            <div className="hidden border-b border-line bg-surface/60 px-4 py-2 text-xs font-semibold uppercase text-muted md:grid md:grid-cols-[minmax(0,1fr)_120px_180px_auto]">
+            <div className="hidden border-b border-line bg-surface/60 px-3 py-2 text-[11px] font-semibold uppercase text-muted md:grid md:grid-cols-[minmax(0,1fr)_120px_180px_auto]">
               <button className="flex items-center gap-1 text-left hover:text-ink" onClick={() => toggleSort("name")}>
                 {t("common.name")} {sortIcon("name")}
               </button>
@@ -446,12 +446,12 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
               <span className="text-right">{t("common.actions")}</span>
             </div>
           )}
-          <button className="flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left text-sm text-ink hover:bg-surface" onClick={() => load(listing.parent)} disabled={path === "." || path === "/"}>
+          <button className="flex w-full items-center gap-3 border-b border-line px-3 py-2.5 text-left text-sm text-ink hover:bg-surface" onClick={() => load(listing.parent)} disabled={path === "." || path === "/"}>
             <Folder size={18} aria-hidden="true" />
             ..
           </button>
           {visibleEntries.map((entry) => (
-            <div key={entry.path} className={`grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line px-4 py-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_120px_180px_auto] ${selectedPaths.includes(entry.path) ? "bg-surface" : ""}`}>
+            <div key={entry.path} className={`grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line px-3 py-2.5 last:border-b-0 md:grid-cols-[minmax(0,1fr)_120px_180px_auto] ${selectedPaths.includes(entry.path) ? "bg-surface" : ""}`}>
               <div className="flex min-w-0 items-center gap-3">
                 <input className="h-5 w-5 shrink-0 rounded border-line bg-surface accent-signal" type="checkbox" checked={selectedPaths.includes(entry.path)} onChange={() => toggleSelection(entry)} onClick={(event) => event.stopPropagation()} />
                 <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => entry.type === "directory" ? load(entry.path) : toggleSelection(entry)}>

@@ -8,7 +8,7 @@ export function LanguageSwitcher({ compact = false }) {
       {languages.map((item) => (
         <button
           key={item.code}
-          className={`grid h-9 w-9 place-items-center rounded-md border text-lg shadow-sm transition hover:border-signal ${language === item.code ? "border-signal bg-surface" : "border-line bg-panel"}`}
+          className={`grid h-8 w-8 place-items-center rounded border text-base shadow-sm transition hover:border-signal ${language === item.code ? "border-signal bg-surface" : "border-line bg-panel"}`}
           type="button"
           onClick={() => setLanguage(item.code)}
           title={item.label}

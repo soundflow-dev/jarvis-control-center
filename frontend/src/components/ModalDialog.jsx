@@ -6,8 +6,8 @@ export function ConfirmDialog({ title, message, confirmLabel, cancelLabel, dange
   const { t } = useI18n()
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-lg border border-line bg-panel p-4 shadow-2xl">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-3">
+      <div className="w-full max-w-md rounded-md border border-line bg-panel p-3 shadow-2xl">
         <h3 className="text-lg font-semibold text-ink">{title}</h3>
         <p className="mt-2 text-sm text-muted">{message}</p>
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -44,8 +44,8 @@ export function TextPromptDialog({ title, label, initialValue = "", confirmLabel
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-      <form className="w-full max-w-md rounded-lg border border-line bg-panel p-4 shadow-2xl" onSubmit={submit} noValidate>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-3">
+      <form className="w-full max-w-md rounded-md border border-line bg-panel p-3 shadow-2xl" onSubmit={submit} noValidate>
         <h3 className="text-lg font-semibold text-ink">{title}</h3>
         <label className="label mt-4 block" htmlFor="prompt-value">{label}</label>
         <input className="field mt-1" id="prompt-value" value={value} onChange={(event) => setValue(event.target.value)} autoFocus />

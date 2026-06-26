@@ -79,8 +79,8 @@ export function SshTerminal({ device, onClose, embedded = false }) {
   }, [device])
 
   return (
-    <section className={embedded ? "flex h-[calc(100vh-9rem)] min-h-[720px] flex-col overflow-hidden rounded-lg border border-line bg-surface" : "fixed inset-0 z-30 flex flex-col bg-surface"}>
-      <header className="flex items-center justify-between gap-3 border-b border-line bg-panel px-4 py-3">
+    <section className={embedded ? "flex h-[calc(100vh-7.5rem)] min-h-[720px] flex-col overflow-hidden rounded-md border border-line bg-panel" : "fixed inset-0 z-30 flex flex-col bg-surface"}>
+      <header className="flex items-center justify-between gap-3 border-b border-line bg-panel px-3 py-2.5">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold text-ink">{device.name}</h2>
           <p className="truncate text-xs text-muted">{device.username}@{device.host}:{device.port} · {t(`terminal.${status}`)}</p>
@@ -90,7 +90,7 @@ export function SshTerminal({ device, onClose, embedded = false }) {
           <span className="hidden sm:inline">{t("common.close")}</span>
         </button>
       </header>
-      <div className="min-h-0 flex-1 p-2 sm:p-3">
+      <div className="min-h-0 flex-1 p-2">
         <div ref={containerRef} className="h-full min-h-0 overflow-hidden rounded-md border border-line bg-black p-2 [&_.xterm]:h-full [&_.xterm-screen]:h-full [&_.xterm-viewport]:h-full" />
       </div>
     </section>

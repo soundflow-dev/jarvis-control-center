@@ -14,14 +14,14 @@ export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme()
 
   return (
-    <div className="inline-flex rounded-md border border-line bg-panel p-1 shadow-sm" aria-label={t("theme.label")}>
+    <div className="inline-flex rounded border border-line bg-panel p-0.5 shadow-sm" aria-label={t("theme.label")}>
       {options.map((option) => {
         const Icon = option.icon
         const selected = theme === option.value
         return (
           <button
             key={option.value}
-            className={`grid h-8 w-8 place-items-center rounded text-muted transition hover:text-ink ${selected ? "bg-surface text-signal shadow-sm" : ""}`}
+            className={`grid h-7 w-7 place-items-center rounded text-muted transition hover:text-ink ${selected ? "bg-surface text-signal shadow-sm" : ""}`}
             type="button"
             onClick={() => setTheme(option.value)}
             title={t(option.labelKey)}

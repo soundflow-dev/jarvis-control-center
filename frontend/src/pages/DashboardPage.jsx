@@ -407,7 +407,7 @@ export function DashboardPage() {
   function TransferJobsPanel() {
     if (transferJobs.length === 0) return null
     return (
-      <section className="rounded-lg border border-line bg-panel p-4 sm:p-5">
+      <section className="rounded-md border border-line bg-panel p-3">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Activity className="shrink-0 text-signal" size={18} aria-hidden="true" />
@@ -415,7 +415,7 @@ export function DashboardPage() {
           </div>
           <button className="btn-secondary min-h-9 px-3" onClick={loadTransferJobs}>{t("common.refresh")}</button>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {transferJobs.slice(0, 5).map((job) => {
             const progress = jobProgress(job)
             const verb = job.action === "move" ? t("common.move") : t("common.copy")
@@ -425,7 +425,7 @@ export function DashboardPage() {
             const canDismiss = ["completed", "failed", "cancelled"].includes(job.status)
             const itemPlural = plural(job.source_paths.length)
             return (
-              <article key={job.id} className="rounded-md border border-line bg-surface p-3">
+              <article key={job.id} className="rounded border border-line bg-panel p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-ink">
@@ -438,7 +438,7 @@ export function DashboardPage() {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${job.status === "completed" ? "bg-signal/15 text-signal" : job.status === "failed" || job.status === "cancelled" ? "bg-red-500/10 text-red-600" : "bg-surface text-muted"}`}>
+                    <span className={`rounded px-2 py-1 text-xs font-semibold ${job.status === "completed" ? "bg-signal/15 text-signal" : job.status === "failed" || job.status === "cancelled" ? "bg-red-500/10 text-red-600" : "bg-surface text-muted"}`}>
                       {t(`transfers.status.${job.status}`)}
                     </span>
                     {canCancel && (
@@ -469,8 +469,8 @@ export function DashboardPage() {
     if (!device) return null
     const shares = device.shares ?? []
     return (
-      <section className="rounded-lg border border-line bg-panel">
-        <header className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <section className="rounded-md border border-line bg-panel">
+        <header className="flex flex-col gap-3 border-b border-line px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold text-ink">{t("shares.title", { name: device.name })}</h3>
             <p className="truncate text-xs text-muted">{device.host}</p>
@@ -480,8 +480,8 @@ export function DashboardPage() {
             {t("common.close")}
           </button>
         </header>
-        <div className="space-y-4 p-4">
-          <form className="grid gap-3 rounded-md border border-line bg-surface p-3 md:grid-cols-2 xl:grid-cols-3" onSubmit={saveShare} noValidate>
+        <div className="space-y-2 p-3">
+          <form className="grid gap-3 rounded border border-line bg-surface p-3 md:grid-cols-2 xl:grid-cols-3" onSubmit={saveShare} noValidate>
             <div>
               <label className="label" htmlFor="share-name">{t("common.name")}</label>
               <input className="field mt-1" id="share-name" name="name" value={shareForm.name} onChange={updateShare} required />
@@ -520,21 +520,21 @@ export function DashboardPage() {
             </div>
           </form>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {shares.map((share) => (
-              <article key={share.id} className="flex flex-col gap-3 rounded-md border border-line bg-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+              <article key={share.id} className="flex flex-col gap-3 rounded border border-line bg-panel px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <h4 className="truncate text-sm font-semibold text-ink">{share.name}</h4>
                   <p className="truncate text-xs text-muted">{share.connection_url}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button className="btn-secondary min-h-9 px-3" onClick={() => testShare(share)}>{t("common.test")}</button>
-                  <button className="btn-secondary min-h-9 px-3" onClick={() => openShareFiles(share)} disabled={share.connection_type !== "smb"}>{t("common.files")}</button>
-                  <button className="btn-secondary min-h-9 px-3" onClick={() => startEditShare(share)}>
+                  <button className="btn-secondary min-h-8 px-3 text-xs" onClick={() => testShare(share)}>{t("common.test")}</button>
+                  <button className="btn-secondary min-h-8 px-3 text-xs" onClick={() => openShareFiles(share)} disabled={share.connection_type !== "smb"}>{t("common.files")}</button>
+                  <button className="btn-secondary min-h-8 px-3 text-xs" onClick={() => startEditShare(share)}>
                     <Pencil size={15} aria-hidden="true" />
                     {t("common.edit")}
                   </button>
-                  <button className="btn-danger min-h-9 px-3" onClick={() => removeShare(share)}>
+                  <button className="btn-danger min-h-8 px-3" onClick={() => removeShare(share)}>
                     <Trash2 size={15} aria-hidden="true" />
                   </button>
                 </div>
@@ -549,24 +549,24 @@ export function DashboardPage() {
 
   function DeviceActions({ device, compact = false }) {
     return (
-      <div className={compact ? "grid grid-cols-2 gap-2" : "mt-4 grid grid-cols-2 gap-2"}>
-        <button className="btn-secondary px-3" onClick={() => openShares(device)}>
+      <div className={compact ? "grid grid-cols-2 gap-1.5" : "mt-3 grid grid-cols-2 gap-1.5"}>
+        <button className="btn-secondary min-h-8 px-2.5 text-xs" onClick={() => openShares(device)}>
           <FolderOpen size={17} aria-hidden="true" />
           {t("common.shares")}
         </button>
-        <button className="btn-secondary px-3" onClick={() => openTerminal(device)} disabled={device.connection_type !== "ssh_sftp"}>
+        <button className="btn-secondary min-h-8 px-2.5 text-xs" onClick={() => openTerminal(device)} disabled={device.connection_type !== "ssh_sftp"}>
           <Terminal size={17} aria-hidden="true" />
           {t("common.terminal")}
         </button>
-        <button className="btn-secondary px-3" onClick={() => openFiles(device)} disabled={!["ssh_sftp", "smb"].includes(device.connection_type)} title={["ssh_sftp", "smb"].includes(device.connection_type) ? t("dashboard.openFiles") : t("dashboard.enableSshOrShare")}>
+        <button className="btn-secondary min-h-8 px-2.5 text-xs" onClick={() => openFiles(device)} disabled={!["ssh_sftp", "smb"].includes(device.connection_type)} title={["ssh_sftp", "smb"].includes(device.connection_type) ? t("dashboard.openFiles") : t("dashboard.enableSshOrShare")}>
           <FolderOpen size={17} aria-hidden="true" />
           {t("common.files")}
         </button>
-        <button className="btn-secondary px-3" onClick={() => startEdit(device)}>
+        <button className="btn-secondary min-h-8 px-2.5 text-xs" onClick={() => startEdit(device)}>
           <Pencil size={17} aria-hidden="true" />
           {t("common.edit")}
         </button>
-        <button className="btn-danger col-span-2 px-3" onClick={() => removeDevice(device)}>
+        <button className="btn-danger col-span-2 min-h-8 px-2.5 text-xs" onClick={() => removeDevice(device)}>
           <Trash2 size={17} aria-hidden="true" />
           {t("common.delete")}
         </button>
@@ -577,13 +577,13 @@ export function DashboardPage() {
   function DeviceSummary({ device }) {
     const activeWorkspace = terminalDevice?.id === device.id || (filesTargetType === "device" && filesDevice?.id === device.id) || sharesDevice?.id === device.id
     return (
-      <article className={`rounded-lg border p-3 ${activeWorkspace ? "border-signal bg-surface" : "border-line bg-panel"}`}>
+      <article className={`rounded border px-3 py-2.5 ${activeWorkspace ? "border-signal bg-surface ring-1 ring-signal/20" : "border-transparent bg-panel hover:border-line"}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold text-ink">{device.name}</h3>
             <p className="truncate text-xs text-muted">{device.host}{device.connection_type === "ssh_sftp" ? `:${device.port}` : ""} · {t("dashboard.shareCount", { count: (device.shares ?? []).length, plural: plural((device.shares ?? []).length) })}</p>
           </div>
-          <span className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${device.active ? "bg-signal/15 text-signal" : "bg-surface text-muted"}`}>
+          <span className={`inline-flex shrink-0 items-center gap-1 rounded px-2 py-0.5 text-[11px] font-semibold ${device.active ? "bg-signal/10 text-signal" : "bg-surface text-muted"}`}>
             <Power size={13} aria-hidden="true" />
             {device.active ? t("common.active") : t("common.inactive")}
           </span>
@@ -594,10 +594,10 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-4">
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-ink sm:text-3xl">{t("dashboard.devices")}</h2>
+          <h2 className="text-xl font-semibold text-ink sm:text-2xl">{t("dashboard.devices")}</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted">{t("dashboard.intro")}</p>
         </div>
         <button className="btn-primary w-full sm:w-auto" onClick={startCreate}>
@@ -606,14 +606,14 @@ export function DashboardPage() {
         </button>
       </section>
 
-      {message && <p className="rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink">{message}</p>}
+      {message && <p className="rounded-md border border-line bg-panel px-3 py-2.5 text-sm text-ink">{message}</p>}
 
       <TransferJobsPanel />
 
       {showForm && (
-        <section className="rounded-lg border border-line bg-panel p-4 sm:p-5">
+        <section className="rounded-md border border-line bg-panel p-3">
           <h3 className="mb-4 text-lg font-semibold text-ink">{editingDevice ? t("dashboard.editMachine") : t("dashboard.newMachine")}</h3>
-          <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={submit} noValidate>
+          <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" onSubmit={submit} noValidate>
             <div>
               <label className="label" htmlFor="name">{t("dashboard.friendlyName")}</label>
               <input className="field mt-1" id="name" name="name" value={form.name} onChange={update} required />
@@ -674,7 +674,7 @@ export function DashboardPage() {
       )}
 
       {devices.length === 0 ? (
-        <section className="grid min-h-64 place-items-center rounded-lg border border-dashed border-line bg-panel/60 p-6 text-center">
+        <section className="grid min-h-56 place-items-center rounded-md border border-dashed border-line bg-panel/60 p-6 text-center">
           <div>
             <Server className="mx-auto mb-3 text-muted" size={40} aria-hidden="true" />
             <h3 className="text-lg font-semibold text-ink">{t("dashboard.noMachines")}</h3>
@@ -682,8 +682,8 @@ export function DashboardPage() {
           </div>
         </section>
       ) : (
-        <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1.35fr)]">
-          <aside className="space-y-3 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-auto">
+        <section className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
+          <aside className="space-y-2 rounded-md border border-line bg-panel p-2 lg:sticky lg:top-[4.5rem] lg:max-h-[calc(100vh-5.25rem)] lg:overflow-auto">
             {devices.map((device) => (
               <DeviceSummary key={device.id} device={device} />
             ))}
@@ -706,7 +706,7 @@ export function DashboardPage() {
             ) : sharesDevice ? (
               renderSharesPanel()
             ) : (
-              <section className="grid min-h-[620px] place-items-center rounded-lg border border-line bg-panel/60 p-6 text-center">
+              <section className="grid min-h-[560px] place-items-center rounded-md border border-line bg-panel/60 p-6 text-center">
                 <div>
                   <Server className="mx-auto mb-3 text-muted" size={42} aria-hidden="true" />
                   <h3 className="text-lg font-semibold text-ink">{t("dashboard.chooseAction")}</h3>

@@ -7,9 +7,9 @@
   color-scheme: light;
   --color-surface: 245 247 250;
   --color-panel: 255 255 255;
-  --color-ink: 28 39 57;
-  --color-muted: 104 116 134;
-  --color-line: 220 226 234;
+  --color-ink: 38 48 64;
+  --color-muted: 118 130 147;
+  --color-line: 226 230 236;
   --color-signal: 0 111 238;
   --color-warning: 245 158 11;
   background: rgb(var(--color-surface));
@@ -19,7 +19,7 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-surface: 15 23 36;
-  --color-panel: 22 32 48;
+  --color-panel: 20 30 45;
   --color-ink: 235 240 247;
   --color-muted: 145 158 177;
   --color-line: 45 59 81;
@@ -33,9 +33,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgb(var(--color-signal) / 0.08), transparent 28rem),
-    rgb(var(--color-surface));
+  background: rgb(var(--color-surface));
 }
 
 button,
@@ -46,23 +44,23 @@ textarea {
 }
 
 .field {
-  @apply w-full rounded-md border border-line bg-panel px-3 py-2.5 text-sm text-ink shadow-sm outline-none transition placeholder:text-muted/70 focus:border-signal focus:ring-2 focus:ring-signal/20;
+  @apply w-full rounded border border-line bg-panel px-3 py-2 text-sm text-ink outline-none transition placeholder:text-muted/70 focus:border-signal focus:ring-2 focus:ring-signal/15;
 }
 
 .label {
-  @apply text-xs font-semibold uppercase text-muted;
+  @apply text-[11px] font-semibold uppercase text-muted;
 }
 
 .btn-primary {
-  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-signal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60;
+  @apply inline-flex min-h-9 items-center justify-center gap-2 rounded bg-signal px-3.5 py-1.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .btn-secondary {
-  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-line bg-panel px-4 py-2 text-sm font-semibold text-ink shadow-sm transition hover:border-signal/70 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-line;
+  @apply inline-flex min-h-9 items-center justify-center gap-2 rounded border border-line bg-panel px-3.5 py-1.5 text-sm font-semibold text-ink transition hover:border-signal/70 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-line;
 }
 
 .btn-danger {
-  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-600 transition hover:border-red-500 disabled:cursor-not-allowed disabled:opacity-45;
+  @apply inline-flex min-h-9 items-center justify-center gap-2 rounded border border-red-500/30 bg-red-500/10 px-3.5 py-1.5 text-sm font-semibold text-red-600 transition hover:border-red-500 disabled:cursor-not-allowed disabled:opacity-45;
 }
 
 :root[data-theme="dark"] .btn-danger {
