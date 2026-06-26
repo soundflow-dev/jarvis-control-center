@@ -638,40 +638,39 @@ export function DashboardPage() {
     const activeWorkspace = terminalDevice?.id === device.id || (filesTargetType === "device" && filesDevice?.id === device.id) || sharesDevice?.id === device.id
     return (
       <article className={`rounded border px-3 py-2.5 ${activeWorkspace ? "border-signal bg-surface ring-1 ring-signal/20" : "border-transparent bg-panel hover:border-line"}`}>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <Power
+            className={`mt-0.5 shrink-0 ${device.active ? "text-signal" : "text-muted"}`}
+            size={16}
+            aria-label={device.active ? t("common.active") : t("common.inactive")}
+          />
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold text-ink">{device.name}</h3>
-            <p className="truncate text-xs text-muted">{device.host}{device.connection_type === "ssh_sftp" ? `:${device.port}` : ""} · {t("dashboard.shareCount", { count: (device.shares ?? []).length, plural: plural((device.shares ?? []).length) })}</p>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-            <span className={`inline-flex h-7 items-center gap-1 rounded px-2 text-[11px] font-semibold ${device.active ? "bg-signal/10 text-signal" : "bg-surface text-muted"}`}>
-              <Power size={13} aria-hidden="true" />
-              {device.active ? t("common.active") : t("common.inactive")}
-            </span>
-            {device.connection_type === "ssh_sftp" && (
-              <>
-                <button
-                  className="btn-secondary grid h-7 min-h-0 w-7 place-items-center p-0"
-                  type="button"
-                  onClick={() => requestDeviceAction(device, "reboot")}
-                  title={t("dashboard.rebootMachine")}
-                  aria-label={t("dashboard.rebootMachine")}
-                >
-                  <RotateCcw size={14} aria-hidden="true" />
-                </button>
-                <button
-                  className="btn-danger grid h-7 min-h-0 w-7 place-items-center p-0"
-                  type="button"
-                  onClick={() => requestDeviceAction(device, "shutdown")}
-                  title={t("dashboard.shutdownMachine")}
-                  aria-label={t("dashboard.shutdownMachine")}
-                >
-                  <PowerOff size={14} aria-hidden="true" />
-                </button>
-              </>
-            )}
+            <p className="truncate text-xs text-muted">{device.host}{device.connection_type === "ssh_sftp" ? `:${device.port}` : ""}</p>
           </div>
         </div>
+        {device.connection_type === "ssh_sftp" && (
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            <button
+              className="btn-secondary min-h-8 px-2.5 text-xs"
+              type="button"
+              onClick={() => requestDeviceAction(device, "reboot")}
+              title={t("dashboard.rebootMachine")}
+            >
+              <RotateCcw size={15} aria-hidden="true" />
+              {t("dashboard.rebootMachine")}
+            </button>
+            <button
+              className="btn-danger min-h-8 px-2.5 text-xs"
+              type="button"
+              onClick={() => requestDeviceAction(device, "shutdown")}
+              title={t("dashboard.shutdownMachine")}
+            >
+              <PowerOff size={15} aria-hidden="true" />
+              {t("dashboard.shutdownMachine")}
+            </button>
+          </div>
+        )}
         <DeviceActions device={device} />
       </article>
     )
