@@ -60,7 +60,7 @@ def initial_exec_path_candidates(device: Device) -> list[str]:
     configured = configured_start_path(device)
     if configured:
         candidates.append(configured)
-    candidates.extend([".", "/", "/config", "/homeassistant"])
+    candidates.extend(["/config", "/homeassistant", "/", "."])
     return list(dict.fromkeys(candidates))
 
 
