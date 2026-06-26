@@ -374,8 +374,8 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
           {(listing.entries.length > 0 || filterQuery) && (
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <label className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} aria-hidden="true" />
-                <input className="field min-h-9 pl-9" value={filterQuery} onChange={(event) => setFilterQuery(event.target.value)} placeholder={t("files.filterPlaceholder")} />
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" size={16} aria-hidden="true" />
+                <input className="field min-h-9 !pl-10" value={filterQuery} onChange={(event) => setFilterQuery(event.target.value)} placeholder={t("files.filterPlaceholder")} />
               </label>
               <p className="text-xs text-muted">
                 {t("files.itemCount", { visible: visibleEntries.length, total: listing.entries.length })}
