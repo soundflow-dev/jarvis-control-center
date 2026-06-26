@@ -82,6 +82,20 @@ def run_ssh_command(client, command: str) -> tuple[int, str, str]:
     return code, stdout.read().decode("utf-8", errors="replace"), stderr.read().decode("utf-8", errors="replace")
 
 
+def run_ssh_command_bytes(client, command: str) -> tuple[int, bytes, str]:
+    stdin, stdout, stderr = client.exec_command(command, timeout=60)
+    stdin.close()
+    output = stdout.read()
+    error = stderr.read().decode("utf-8", errors="replace")
+    code = stdout.channel.recv_exit_status()
+    return code, output, error
+
+
+def raise_command_error(action: str, path: str, code: int, output: str, error: str) -> None:
+    detail = error.strip() or output.strip() or f"exit {code}"
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"SSH fallback {action} failed for {path}: {detail}")
+
+
 def entry_from_attr(path: str, attr) -> dict:
     is_dir = stat.S_ISDIR(attr.st_mode)
     return {
@@ -186,11 +200,28 @@ def list_sftp_directory(device: Device, path: str | None) -> dict:
 
 
 def make_sftp_directory(device: Device, path: str) -> None:
-    client, sftp = sftp_for_device(device)
+    safe_path = normalize_path(path)
     try:
-        sftp.mkdir(normalize_path(path))
+        client, sftp = sftp_for_device(device)
+    except (paramiko.SSHException, EOFError, OSError):
+        make_sftp_directory_via_exec(device, safe_path)
+        return
+    try:
+        sftp.mkdir(safe_path)
     finally:
         sftp.close()
+        client.close()
+
+
+def make_sftp_directory_via_exec(device: Device, path: str) -> None:
+    if path in ("", "."):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Folder path is required.")
+    client = connect_ssh_device(device)
+    try:
+        code, output, error = run_ssh_command(client, f"mkdir {shlex.quote(path)}")
+        if code != 0:
+            raise_command_error("mkdir", path, code, output, error)
+    finally:
         client.close()
 
 
@@ -198,11 +229,25 @@ def delete_sftp_path(device: Device, path: str) -> None:
     safe_path = normalize_path(path)
     if safe_path in ("", ".", "/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Refusing to delete the root folder.")
-    client, sftp = sftp_for_device(device)
+    try:
+        client, sftp = sftp_for_device(device)
+    except (paramiko.SSHException, EOFError, OSError):
+        delete_sftp_path_via_exec(device, safe_path)
+        return
     try:
         delete_sftp_tree(sftp, safe_path)
     finally:
         sftp.close()
+        client.close()
+
+
+def delete_sftp_path_via_exec(device: Device, path: str) -> None:
+    client = connect_ssh_device(device)
+    try:
+        code, output, error = run_ssh_command(client, f"rm -rf {shlex.quote(path)}")
+        if code != 0:
+            raise_command_error("delete", path, code, output, error)
+    finally:
         client.close()
 
 
@@ -217,21 +262,55 @@ def delete_sftp_tree(sftp, path: str) -> None:
 
 
 def rename_sftp_path(device: Device, source: str, destination: str) -> None:
-    client, sftp = sftp_for_device(device)
+    safe_source = normalize_path(source)
+    safe_destination = normalize_path(destination)
     try:
-        sftp.rename(normalize_path(source), normalize_path(destination))
+        client, sftp = sftp_for_device(device)
+    except (paramiko.SSHException, EOFError, OSError):
+        rename_sftp_path_via_exec(device, safe_source, safe_destination)
+        return
+    try:
+        sftp.rename(safe_source, safe_destination)
     finally:
         sftp.close()
         client.close()
 
 
+def rename_sftp_path_via_exec(device: Device, source: str, destination: str) -> None:
+    if source in ("", ".") or destination in ("", "."):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Source and destination are required.")
+    client = connect_ssh_device(device)
+    try:
+        code, output, error = run_ssh_command(client, f"mv {shlex.quote(source)} {shlex.quote(destination)}")
+        if code != 0:
+            raise_command_error("rename", source, code, output, error)
+    finally:
+        client.close()
+
+
 def read_sftp_file(device: Device, path: str) -> tuple[str, io.BytesIO]:
     safe_path = normalize_path(path)
-    client, sftp = sftp_for_device(device)
+    try:
+        client, sftp = sftp_for_device(device)
+    except (paramiko.SSHException, EOFError, OSError):
+        return read_sftp_file_via_exec(device, safe_path)
     try:
         with sftp.open(safe_path, "rb") as remote_file:
             content = remote_file.read()
         return posixpath.basename(safe_path), io.BytesIO(content)
     finally:
         sftp.close()
+        client.close()
+
+
+def read_sftp_file_via_exec(device: Device, path: str) -> tuple[str, io.BytesIO]:
+    if path in ("", "."):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File path is required.")
+    client = connect_ssh_device(device)
+    try:
+        code, content, error = run_ssh_command_bytes(client, f"cat -- {shlex.quote(path)}")
+        if code != 0:
+            raise_command_error("download", path, code, "", error)
+        return posixpath.basename(path), io.BytesIO(content)
+    finally:
         client.close()
