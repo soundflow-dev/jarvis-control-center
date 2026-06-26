@@ -8,6 +8,7 @@ import { LanguageProvider, useI18n } from "./i18n"
 import { DashboardPage } from "./pages/DashboardPage"
 import { LoginPage } from "./pages/LoginPage"
 import { SetupPage } from "./pages/SetupPage"
+import { ThemeProvider } from "./theme"
 
 export default function App() {
   const { t } = useI18n()
@@ -59,7 +60,9 @@ export default function App() {
 }
 
 createRoot(document.getElementById("root")).render(
-  <LanguageProvider>
-    <App />
-  </LanguageProvider>,
+  <ThemeProvider>
+    <LanguageProvider>
+      <App />
+    </LanguageProvider>
+  </ThemeProvider>,
 )

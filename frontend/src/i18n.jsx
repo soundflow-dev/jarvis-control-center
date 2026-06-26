@@ -11,6 +11,12 @@ const translations = {
     loading: "Loading...",
     language: "Language",
     logout: "Logout",
+    theme: {
+      label: "Theme",
+      system: "Use system theme",
+      dark: "Dark mode",
+      light: "Light mode",
+    },
     auth: {
       loginSubtitle: "Sign in to manage your homelab",
       setupSubtitle: "Initial administrator setup",
@@ -177,6 +183,12 @@ const translations = {
     loading: "A carregar...",
     language: "Idioma",
     logout: "Terminar sessão",
+    theme: {
+      label: "Tema",
+      system: "Usar tema do sistema",
+      dark: "Modo escuro",
+      light: "Modo claro",
+    },
     auth: {
       loginSubtitle: "Inicie sessão para gerir o seu homelab",
       setupSubtitle: "Configuração inicial do administrador",
@@ -343,6 +355,12 @@ const translations = {
     loading: "Chargement...",
     language: "Langue",
     logout: "Déconnexion",
+    theme: {
+      label: "Thème",
+      system: "Utiliser le thème du système",
+      dark: "Mode sombre",
+      light: "Mode clair",
+    },
     auth: {
       loginSubtitle: "Connectez-vous pour gérer votre homelab",
       setupSubtitle: "Configuration initiale de l'administrateur",

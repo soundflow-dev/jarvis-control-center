@@ -383,7 +383,7 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
           )}
 
           {clipboard && (
-            <div className="mb-3 flex flex-col gap-3 rounded-md border border-signal/50 bg-teal-950/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-3 flex flex-col gap-3 rounded-md border border-signal/40 bg-signal/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-ink">
                 {t("files.clipboardSummary", { action: clipboard.action === "move" ? t("common.move") : t("common.copy"), count: clipboard.sourcePaths.length, plural: plural(clipboard.sourcePaths.length), source: clipboard.sourceDeviceName })}
               </p>
@@ -428,7 +428,7 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
         <div className="m-3 overflow-hidden rounded-lg border border-line bg-panel sm:m-4">
           {visibleEntries.length > 0 && (
             <label className="flex items-center gap-3 border-b border-line px-4 py-3 text-sm text-muted">
-              <input className="h-5 w-5 rounded border-line bg-surface accent-teal-400" type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
+              <input className="h-5 w-5 rounded border-line bg-surface accent-signal" type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
               {t("files.selectVisible")}
             </label>
           )}
@@ -453,9 +453,9 @@ export function FileExplorer({ device, targetType = "device", onClose, clipboard
           {visibleEntries.map((entry) => (
             <div key={entry.path} className={`grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line px-4 py-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_120px_180px_auto] ${selectedPaths.includes(entry.path) ? "bg-surface" : ""}`}>
               <div className="flex min-w-0 items-center gap-3">
-                <input className="h-5 w-5 shrink-0 rounded border-line bg-surface accent-teal-400" type="checkbox" checked={selectedPaths.includes(entry.path)} onChange={() => toggleSelection(entry)} onClick={(event) => event.stopPropagation()} />
+                <input className="h-5 w-5 shrink-0 rounded border-line bg-surface accent-signal" type="checkbox" checked={selectedPaths.includes(entry.path)} onChange={() => toggleSelection(entry)} onClick={(event) => event.stopPropagation()} />
                 <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => entry.type === "directory" ? load(entry.path) : toggleSelection(entry)}>
-                  {entry.type === "directory" ? <Folder className="shrink-0 text-teal-300" size={19} aria-hidden="true" /> : <File className="shrink-0 text-muted" size={19} aria-hidden="true" />}
+                  {entry.type === "directory" ? <Folder className="shrink-0 text-signal" size={19} aria-hidden="true" /> : <File className="shrink-0 text-muted" size={19} aria-hidden="true" />}
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium text-ink">{entry.name}</span>
                     <span className="mt-0.5 block truncate text-xs text-muted md:hidden">

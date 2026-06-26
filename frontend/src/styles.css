@@ -3,16 +3,39 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #070b14;
-  color: #e5edf7;
+  color-scheme: light;
+  --color-surface: 245 247 250;
+  --color-panel: 255 255 255;
+  --color-ink: 28 39 57;
+  --color-muted: 104 116 134;
+  --color-line: 220 226 234;
+  --color-signal: 0 111 238;
+  --color-warning: 245 158 11;
+  background: rgb(var(--color-surface));
+  color: rgb(var(--color-ink));
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-surface: 15 23 36;
+  --color-panel: 22 32 48;
+  --color-ink: 235 240 247;
+  --color-muted: 145 158 177;
+  --color-line: 45 59 81;
+  --color-signal: 0 190 255;
+  --color-warning: 245 158 11;
+  background: rgb(var(--color-surface));
+  color: rgb(var(--color-ink));
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgb(var(--color-signal) / 0.08), transparent 28rem),
+    rgb(var(--color-surface));
 }
 
 button,
@@ -23,21 +46,25 @@ textarea {
 }
 
 .field {
-  @apply w-full rounded-md border border-line bg-surface px-3 py-2.5 text-sm text-ink outline-none transition focus:border-signal focus:ring-2 focus:ring-signal/20;
+  @apply w-full rounded-md border border-line bg-panel px-3 py-2.5 text-sm text-ink shadow-sm outline-none transition placeholder:text-muted/70 focus:border-signal focus:ring-2 focus:ring-signal/20;
 }
 
 .label {
-  @apply text-xs font-medium uppercase tracking-wide text-muted;
+  @apply text-xs font-semibold uppercase text-muted;
 }
 
 .btn-primary {
-  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-signal px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-teal-300 disabled:cursor-not-allowed disabled:opacity-60;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-signal px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .btn-secondary {
-  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-line bg-panel px-4 py-2 text-sm font-semibold text-ink transition hover:border-signal/70 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-line;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-line bg-panel px-4 py-2 text-sm font-semibold text-ink shadow-sm transition hover:border-signal/70 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-line;
 }
 
 .btn-danger {
-  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-red-900/60 bg-red-950/40 px-4 py-2 text-sm font-semibold text-red-100 transition hover:border-red-500 disabled:cursor-not-allowed disabled:opacity-45;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-600 transition hover:border-red-500 disabled:cursor-not-allowed disabled:opacity-45;
+}
+
+:root[data-theme="dark"] .btn-danger {
+  @apply text-red-100;
 }

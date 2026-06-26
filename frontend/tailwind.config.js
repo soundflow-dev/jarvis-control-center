@@ -3,13 +3,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        panel: "#111827",
-        surface: "#0b1220",
-        ink: "#e5edf7",
-        muted: "#9ca3af",
-        line: "#223047",
-        signal: "#14b8a6",
-        warning: "#f59e0b"
+        panel: "rgb(var(--color-panel) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
+        ink: "rgb(var(--color-ink) / <alpha-value>)",
+        muted: "rgb(var(--color-muted) / <alpha-value>)",
+        line: "rgb(var(--color-line) / <alpha-value>)",
+        signal: "rgb(var(--color-signal) / <alpha-value>)",
+        warning: "rgb(var(--color-warning) / <alpha-value>)",
       }
     }
   },

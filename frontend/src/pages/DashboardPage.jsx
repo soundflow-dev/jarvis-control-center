@@ -410,7 +410,7 @@ export function DashboardPage() {
       <section className="rounded-lg border border-line bg-panel p-4 sm:p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <Activity className="shrink-0 text-teal-300" size={18} aria-hidden="true" />
+            <Activity className="shrink-0 text-signal" size={18} aria-hidden="true" />
             <h3 className="truncate text-sm font-semibold text-ink">{t("transfers.title")}</h3>
           </div>
           <button className="btn-secondary min-h-9 px-3" onClick={loadTransferJobs}>{t("common.refresh")}</button>
@@ -438,7 +438,7 @@ export function DashboardPage() {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${job.status === "completed" ? "bg-teal-950 text-teal-200" : job.status === "failed" || job.status === "cancelled" ? "bg-red-950 text-red-100" : "bg-slate-800 text-slate-200"}`}>
+                    <span className={`rounded-md px-2 py-1 text-xs font-semibold ${job.status === "completed" ? "bg-signal/15 text-signal" : job.status === "failed" || job.status === "cancelled" ? "bg-red-500/10 text-red-600" : "bg-surface text-muted"}`}>
                       {t(`transfers.status.${job.status}`)}
                     </span>
                     {canCancel && (
@@ -453,8 +453,8 @@ export function DashboardPage() {
                     )}
                   </div>
                 </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
-                  <div className={`h-full rounded-full ${job.status === "failed" || job.status === "cancelled" ? "bg-red-500" : job.status === "cancelling" ? "bg-amber-400" : "bg-teal-400"}`} style={{ width: `${progress}%` }} />
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-line/60">
+                  <div className={`h-full rounded-full ${job.status === "failed" || job.status === "cancelled" ? "bg-red-500" : job.status === "cancelling" ? "bg-amber-400" : "bg-signal"}`} style={{ width: `${progress}%` }} />
                 </div>
               </article>
             )
@@ -583,7 +583,7 @@ export function DashboardPage() {
             <h3 className="truncate text-sm font-semibold text-ink">{device.name}</h3>
             <p className="truncate text-xs text-muted">{device.host}{device.connection_type === "ssh_sftp" ? `:${device.port}` : ""} · {t("dashboard.shareCount", { count: (device.shares ?? []).length, plural: plural((device.shares ?? []).length) })}</p>
           </div>
-          <span className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${device.active ? "bg-teal-950 text-teal-200" : "bg-slate-800 text-slate-300"}`}>
+          <span className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold ${device.active ? "bg-signal/15 text-signal" : "bg-surface text-muted"}`}>
             <Power size={13} aria-hidden="true" />
             {device.active ? t("common.active") : t("common.inactive")}
           </span>
@@ -624,7 +624,7 @@ export function DashboardPage() {
             </div>
             <label className="flex min-h-11 items-end gap-3 text-sm text-ink">
               <input
-                className="mb-3 h-5 w-5 rounded border-line bg-surface accent-teal-400"
+                className="mb-3 h-5 w-5 rounded border-line bg-surface accent-signal"
                 type="checkbox"
                 checked={form.connection_type === "ssh_sftp"}
                 onChange={(event) => setForm({ ...form, connection_type: event.target.checked ? "ssh_sftp" : "machine", auth_method: event.target.checked ? "password" : "none", username: event.target.checked ? form.username : "", password: "", private_key: "" })}
@@ -662,7 +662,7 @@ export function DashboardPage() {
               </div>
             ) : null}
             <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
-              <input className="h-5 w-5 rounded border-line bg-surface accent-teal-400" type="checkbox" name="active" checked={form.active} onChange={update} />
+              <input className="h-5 w-5 rounded border-line bg-surface accent-signal" type="checkbox" name="active" checked={form.active} onChange={update} />
               {t("common.active")}
             </label>
             <div className="flex flex-col gap-3 sm:flex-row md:col-span-2 xl:col-span-3">
