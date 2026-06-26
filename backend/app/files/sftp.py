@@ -4,6 +4,7 @@ import io
 import posixpath
 import stat
 from datetime import datetime
+from urllib.parse import urlparse
 
 from fastapi import HTTPException, status
 
@@ -23,6 +24,33 @@ def parent_path(path: str) -> str:
         return "."
     parent = posixpath.dirname(path.rstrip("/"))
     return parent or "."
+
+
+def configured_start_path(device: Device) -> str | None:
+    if not device.connection_url:
+        return None
+    parsed = urlparse(device.connection_url)
+    if parsed.scheme not in ("sftp", "ssh"):
+        return None
+    if not parsed.path or parsed.path == "/":
+        return None
+    return normalize_path(parsed.path)
+
+
+def initial_path_candidates(device: Device, sftp) -> list[str]:
+    candidates: list[str] = []
+    configured = configured_start_path(device)
+    if configured:
+        candidates.append(configured)
+    candidates.append(".")
+    try:
+        current = sftp.getcwd()
+        if current:
+            candidates.append(normalize_path(current))
+    except OSError:
+        pass
+    candidates.extend(["/", "/config", "/homeassistant"])
+    return list(dict.fromkeys(candidates))
 
 
 def sftp_for_device(device: Device):
@@ -48,7 +76,23 @@ def list_sftp_directory(device: Device, path: str | None) -> dict:
     safe_path = normalize_path(path)
     client, sftp = sftp_for_device(device)
     try:
-        entries = [entry_from_attr(safe_path, attr) for attr in sftp.listdir_attr(safe_path)]
+        if safe_path == ".":
+            entries = None
+            errors: list[str] = []
+            for candidate in initial_path_candidates(device, sftp):
+                try:
+                    entries = [entry_from_attr(candidate, attr) for attr in sftp.listdir_attr(candidate)]
+                    safe_path = candidate
+                    break
+                except OSError as exc:
+                    errors.append(f"{candidate}: {exc}")
+            if entries is None:
+                detail = "SFTP initial directory is not available."
+                if errors:
+                    detail += " Tried " + "; ".join(errors)
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+        else:
+            entries = [entry_from_attr(safe_path, attr) for attr in sftp.listdir_attr(safe_path)]
         entries.sort(key=lambda item: (item["type"] != "directory", item["name"].lower()))
         return {"path": safe_path, "parent": parent_path(safe_path), "entries": entries}
     finally:

@@ -32,12 +32,13 @@ function pathCrumbs(currentPath) {
   if (!currentPath || currentPath === "." || currentPath === "/") {
     return [{ label: "Root", path: "." }]
   }
+  const isAbsolute = currentPath.startsWith("/")
   const parts = currentPath.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean)
   return [
     { label: "Root", path: "." },
     ...parts.map((part, index) => ({
       label: part,
-      path: parts.slice(0, index + 1).join("/"),
+      path: `${isAbsolute ? "/" : ""}${parts.slice(0, index + 1).join("/")}`,
     })),
   ]
 }
