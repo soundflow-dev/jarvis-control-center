@@ -133,6 +133,24 @@ def entry_from_ls_line(path: str, line: str) -> dict | None:
     }
 
 
+def path_is_writable_via_exec(client, path: str) -> bool:
+    code, _, _ = run_ssh_command(client, f"test -w {shlex.quote(path)}")
+    return code == 0
+
+
+def choose_initial_exec_result(results: list[tuple[bool, dict]]) -> dict | None:
+    for writable, result in results:
+        if writable and result["entries"]:
+            return result
+    for writable, result in results:
+        if writable:
+            return result
+    for _, result in results:
+        if result["entries"]:
+            return result
+    return results[0][1] if results else None
+
+
 def list_sftp_directory_via_exec(device: Device, path: str | None) -> dict:
     requested_path = normalize_path(path)
     is_initial_listing = requested_path == "."
@@ -140,9 +158,9 @@ def list_sftp_directory_via_exec(device: Device, path: str | None) -> dict:
     client = connect_ssh_device(device)
     try:
         errors: list[str] = []
-        empty_result: dict | None = None
+        initial_results: list[tuple[bool, dict]] = []
         for candidate in candidates:
-            command = f"LC_ALL=C ls -la {shlex.quote(candidate)}"
+            command = f"LC_ALL=C ls -la -- {shlex.quote(candidate)}"
             code, output, error = run_ssh_command(client, command)
             if code != 0:
                 errors.append(f"{candidate}: {error.strip() or output.strip() or f'exit {code}'}")
@@ -154,12 +172,12 @@ def list_sftp_directory_via_exec(device: Device, path: str | None) -> dict:
                     entries.append(entry)
             entries.sort(key=lambda item: (item["type"] != "directory", item["name"].lower()))
             result = {"path": candidate, "parent": parent_path(candidate), "entries": entries}
-            if entries or not is_initial_listing:
+            if not is_initial_listing:
                 return result
-            if empty_result is None:
-                empty_result = result
-        if empty_result is not None:
-            return empty_result
+            initial_results.append((path_is_writable_via_exec(client, candidate), result))
+        initial_result = choose_initial_exec_result(initial_results)
+        if initial_result is not None:
+            return initial_result
         detail = "SFTP is not available and SSH file listing failed."
         if errors:
             detail += " Tried " + "; ".join(errors)
@@ -218,7 +236,7 @@ def make_sftp_directory_via_exec(device: Device, path: str) -> None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Folder path is required.")
     client = connect_ssh_device(device)
     try:
-        code, output, error = run_ssh_command(client, f"mkdir {shlex.quote(path)}")
+        code, output, error = run_ssh_command(client, f"mkdir -- {shlex.quote(path)}")
         if code != 0:
             raise_command_error("mkdir", path, code, output, error)
     finally:
@@ -244,7 +262,7 @@ def delete_sftp_path(device: Device, path: str) -> None:
 def delete_sftp_path_via_exec(device: Device, path: str) -> None:
     client = connect_ssh_device(device)
     try:
-        code, output, error = run_ssh_command(client, f"rm -rf {shlex.quote(path)}")
+        code, output, error = run_ssh_command(client, f"rm -rf -- {shlex.quote(path)}")
         if code != 0:
             raise_command_error("delete", path, code, output, error)
     finally:
@@ -281,7 +299,7 @@ def rename_sftp_path_via_exec(device: Device, source: str, destination: str) -> 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Source and destination are required.")
     client = connect_ssh_device(device)
     try:
-        code, output, error = run_ssh_command(client, f"mv {shlex.quote(source)} {shlex.quote(destination)}")
+        code, output, error = run_ssh_command(client, f"mv -- {shlex.quote(source)} {shlex.quote(destination)}")
         if code != 0:
             raise_command_error("rename", source, code, output, error)
     finally:
