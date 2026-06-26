@@ -60,7 +60,7 @@ def initial_exec_path_candidates(device: Device) -> list[str]:
     configured = configured_start_path(device)
     if configured:
         candidates.append(configured)
-    candidates.extend(["/config", "/homeassistant", "/", "."])
+    candidates.extend(["/config", "/homeassistant", "/share", "/media", "/ssl", "/addons", "/backup", "/", "."])
     return list(dict.fromkeys(candidates))
 
 
@@ -139,16 +139,9 @@ def path_is_writable_via_exec(client, path: str) -> bool:
 
 
 def choose_initial_exec_result(results: list[tuple[bool, dict]]) -> dict | None:
-    for writable, result in results:
-        if writable and result["entries"]:
-            return result
-    for writable, result in results:
-        if writable:
-            return result
-    for _, result in results:
-        if result["entries"]:
-            return result
-    return results[0][1] if results else None
+    if not results:
+        return None
+    return max(results, key=lambda item: (len(item[1]["entries"]), item[0], item[1]["path"] == ".", item[1]["path"] == "/"))[1]
 
 
 def list_sftp_directory_via_exec(device: Device, path: str | None) -> dict:
