@@ -96,6 +96,7 @@ export function DashboardPage() {
   const [shareDeleteTarget, setShareDeleteTarget] = useState(null)
   const [deviceDeleteTarget, setDeviceDeleteTarget] = useState(null)
   const [deviceActionTarget, setDeviceActionTarget] = useState(null)
+  const [powerMenuDeviceId, setPowerMenuDeviceId] = useState(null)
 
   async function loadDevices() {
     setDevices(await api.listDevices())
@@ -271,6 +272,7 @@ export function DashboardPage() {
   }
 
   function requestDeviceAction(device, action) {
+    setPowerMenuDeviceId(null)
     setDeviceActionTarget({ device, action })
   }
 
@@ -637,7 +639,7 @@ export function DashboardPage() {
   function DeviceSummary({ device }) {
     const activeWorkspace = terminalDevice?.id === device.id || (filesTargetType === "device" && filesDevice?.id === device.id) || sharesDevice?.id === device.id
     return (
-      <article className={`rounded border px-3 py-2.5 ${activeWorkspace ? "border-signal bg-surface ring-1 ring-signal/20" : "border-transparent bg-panel hover:border-line"}`}>
+      <article className={`relative rounded border px-3 py-2.5 ${activeWorkspace ? "border-signal bg-surface ring-1 ring-signal/20" : "border-transparent bg-panel hover:border-line"}`}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-2">
             <Power
@@ -651,25 +653,30 @@ export function DashboardPage() {
             </div>
           </div>
           {device.connection_type === "ssh_sftp" && (
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="relative shrink-0">
               <button
-                className="btn-secondary grid h-7 min-h-0 w-7 place-items-center p-0"
+                className="btn-secondary flex h-7 min-h-0 items-center gap-1 px-2"
                 type="button"
-                onClick={() => requestDeviceAction(device, "reboot")}
-                title={t("dashboard.rebootMachine")}
-                aria-label={t("dashboard.rebootMachine")}
+                onClick={() => setPowerMenuDeviceId((current) => current === device.id ? null : device.id)}
+                title={`${t("dashboard.rebootMachine")} / ${t("dashboard.shutdownMachine")}`}
+                aria-label={`${t("dashboard.rebootMachine")} / ${t("dashboard.shutdownMachine")}`}
+                aria-expanded={powerMenuDeviceId === device.id}
               >
-                <RotateCcw size={13} aria-hidden="true" />
+                <RotateCcw size={12} aria-hidden="true" />
+                <PowerOff size={12} aria-hidden="true" />
               </button>
-              <button
-                className="btn-danger grid h-7 min-h-0 w-7 place-items-center p-0"
-                type="button"
-                onClick={() => requestDeviceAction(device, "shutdown")}
-                title={t("dashboard.shutdownMachine")}
-                aria-label={t("dashboard.shutdownMachine")}
-              >
-                <PowerOff size={13} aria-hidden="true" />
-              </button>
+              {powerMenuDeviceId === device.id && (
+                <div className="absolute right-0 top-8 z-20 w-36 overflow-hidden rounded-md border border-line bg-panel shadow-lg">
+                  <button className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-ink hover:bg-surface" type="button" onClick={() => requestDeviceAction(device, "reboot")}>
+                    <RotateCcw size={14} aria-hidden="true" />
+                    {t("dashboard.rebootMachine")}
+                  </button>
+                  <button className="flex w-full items-center gap-2 border-t border-line px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-500/10" type="button" onClick={() => requestDeviceAction(device, "shutdown")}>
+                    <PowerOff size={14} aria-hidden="true" />
+                    {t("dashboard.shutdownMachine")}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
