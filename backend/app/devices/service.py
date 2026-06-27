@@ -309,9 +309,9 @@ if [ "$system_name" = "Darwin" ]; then
   file_pages=$(printf '%s\n' "$vm_output" | awk '/File-backed pages/ {gsub("\\.", "", $3); print $3}')
   reusable_pages=$(( ${free_pages:-0} + ${inactive_pages:-0} + ${speculative_pages:-0} + ${file_pages:-0} ))
   memory_available=$(( reusable_pages * page_size ))
-  boot_time=$(sysctl -n kern.boottime 2>/dev/null | sed -n 's/.*sec = \([0-9][0-9]*\).*/\1/p')
+  boot_time=$(sysctl -n kern.boottime 2>/dev/null | awk -F'[=,]' '/sec/ {gsub(/[^0-9]/, "", $2); print $2; exit}')
   now_time=$(date +%s 2>/dev/null || echo "")
-  if [ -n "$boot_time" ] && [ -n "$now_time" ]; then
+  if [ -n "$boot_time" ] && [ "$boot_time" -gt 0 ] 2>/dev/null && [ -n "$now_time" ] && [ "$now_time" -gt "$boot_time" ] 2>/dev/null; then
     uptime_seconds=$(( now_time - boot_time ))
   fi
   df -Pk / 2>/dev/null | awk 'NR==2 {print "disk_total="$2 * 1024; print "disk_used="$3 * 1024; print "disk_available="$4 * 1024; print "disk_mount="$6}' > /tmp/remotepanel_stats_df_$$
