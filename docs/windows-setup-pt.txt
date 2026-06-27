@@ -1,0 +1,290 @@
+RemotePanel - Preparar Windows para teste
+=========================================
+
+Objetivo
+--------
+
+Preparar uma máquina Windows 10/11 ou Windows Server para ser usada no RemotePanel.
+
+Depois de configurado, o RemotePanel pode tentar:
+
+- abrir Terminal por SSH
+- obter Stats
+- fazer reboot/shutdown
+- usar SFTP para ficheiros, se o OpenSSH Server expuser SFTP corretamente
+- usar Wake-on-LAN, se adicionares o MAC address
+
+
+1. Abrir PowerShell como Administrador
+-------------------------------------
+
+No Windows:
+
+1. Clica no botão Start.
+2. Escreve:
+
+PowerShell
+
+3. Clica com o botão direito em Windows PowerShell.
+4. Escolhe:
+
+Run as administrator
+
+Em português pode aparecer como:
+
+Executar como administrador
+
+
+2. Instalar OpenSSH Server
+--------------------------
+
+No PowerShell aberto como administrador, cola:
+
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+
+Espera terminar.
+
+Para confirmar se ficou instalado:
+
+Get-WindowsCapability -Online | Where-Object Name -like 'OpenSSH.Server*'
+
+Deve aparecer:
+
+State : Installed
+
+
+3. Ativar o serviço SSH
+-----------------------
+
+Cola estes comandos:
+
+Start-Service sshd
+Set-Service -Name sshd -StartupType Automatic
+
+Isto liga o servidor SSH agora e faz com que ele arranque automaticamente com o Windows.
+
+
+4. Abrir a firewall do Windows
+------------------------------
+
+Normalmente o Windows cria a regra automaticamente, mas para garantir:
+
+New-NetFirewallRule -Name sshd -DisplayName "OpenSSH Server" -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+
+Se disser que a regra já existe, não faz mal.
+
+
+5. Descobrir o IP do Windows
+----------------------------
+
+No PowerShell:
+
+ipconfig
+
+Procura a placa de rede ativa e a linha IPv4 Address.
+
+Exemplo:
+
+IPv4 Address . . . . . . . . . . : 10.10.20.50
+
+Este é o IP que vais usar no RemotePanel.
+
+
+6. Verificar o utilizador Windows
+---------------------------------
+
+No PowerShell:
+
+whoami
+
+Pode aparecer algo como:
+
+desktop-bruno\bruno
+
+No RemotePanel, podes testar com:
+
+bruno
+
+ou, se for preciso:
+
+desktop-bruno\bruno
+
+Se for uma conta Microsoft, o username real pode não ser o email. O comando whoami é a referência.
+
+
+7. Dar permissões de administrador
+----------------------------------
+
+Para Stats, muitas vezes um utilizador normal chega.
+
+Para reboot/shutdown, o utilizador SSH deve ser administrador.
+
+Para ver os administradores locais:
+
+net localgroup Administrators
+
+Se precisares adicionar o teu user:
+
+net localgroup Administrators "NOME_DO_USER" /add
+
+Exemplo:
+
+net localgroup Administrators "bruno" /add
+
+
+8. Testar SSH a partir de outra máquina
+---------------------------------------
+
+Antes de ir ao RemotePanel, testa a ligação SSH a partir de outra máquina na rede.
+
+Num Mac, Linux, Unraid ou outra máquina:
+
+ssh bruno@10.10.20.50
+
+Troca bruno pelo teu user e 10.10.20.50 pelo IP do Windows.
+
+Na primeira vez pode perguntar:
+
+Are you sure you want to continue connecting?
+
+Responde:
+
+yes
+
+Depois escreve a password do Windows.
+
+Se entrar, está bom.
+
+
+9. Confirmar PowerShell e Stats
+-------------------------------
+
+Dentro da sessão SSH para o Windows, testa:
+
+powershell
+
+Depois:
+
+Get-CimInstance Win32_Processor
+
+Se aparecer informação do CPU, os Stats do RemotePanel devem funcionar.
+
+Também podes testar:
+
+Get-CimInstance Win32_OperatingSystem
+Get-CimInstance Win32_LogicalDisk
+
+
+10. Preparar Wake-on-LAN
+------------------------
+
+Para Wake-on-LAN precisas do MAC address.
+
+No Windows:
+
+getmac
+
+Ou:
+
+ipconfig /all
+
+Procura algo parecido com:
+
+Physical Address . . . . . . . . : AA-BB-CC-DD-EE-FF
+
+No RemotePanel podes colocar como:
+
+AA:BB:CC:DD:EE:FF
+
+Wake-on-LAN também pode precisar de estar ativo na BIOS/UEFI e nas definições da placa de rede do Windows.
+
+
+11. Adicionar no RemotePanel
+----------------------------
+
+No RemotePanel:
+
+1. Clica em Adicionar máquina.
+2. Preenche:
+
+Nome: Windows PC
+Host/IP: 10.10.20.50
+MAC address: AA:BB:CC:DD:EE:FF
+
+3. Ativa SSH/SFTP.
+4. Porta:
+
+22
+
+5. User:
+
+bruno
+
+6. Autenticação:
+
+Password
+
+7. Password:
+
+a password do Windows
+
+8. Guarda.
+
+
+12. Testar no RemotePanel
+-------------------------
+
+Testa por esta ordem:
+
+1. Terminal
+   Deve abrir uma sessão SSH.
+
+2. Stats
+   Deve mostrar CPU, memória, disco e uptime.
+
+3. Menu de energia
+   Wake envia um pacote Wake-on-LAN.
+   Reboot reinicia o Windows.
+   Shutdown desliga o Windows.
+
+Atenção: Reboot e Shutdown fazem mesmo a ação.
+
+
+Problemas comuns
+----------------
+
+Se não liga por SSH:
+
+Get-Service sshd
+
+Tem de estar Running.
+
+Se a porta estiver bloqueada:
+
+Test-NetConnection -ComputerName 127.0.0.1 -Port 22
+
+Se Stats não funcionar:
+
+- confirma que PowerShell abre via SSH
+- confirma que Get-CimInstance Win32_Processor funciona
+- verifica se alguma política de segurança bloqueia PowerShell/WMI/CIM
+
+Se reboot/shutdown não funcionar:
+
+- usa uma conta administrador
+- confirma se este comando funciona manualmente dentro do SSH:
+
+shutdown.exe /r /t 0 /f
+
+
+Resumo rápido
+-------------
+
+Comandos principais:
+
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+Start-Service sshd
+Set-Service -Name sshd -StartupType Automatic
+New-NetFirewallRule -Name sshd -DisplayName "OpenSSH Server" -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+
+Depois, no RemotePanel, adiciona a máquina com SSH/SFTP ativo, porta 22, user/password do Windows e MAC address se quiseres Wake-on-LAN.

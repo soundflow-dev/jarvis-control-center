@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import io
 import re
 import socket
@@ -16,6 +17,10 @@ from app.security.crypto import decrypt_json, encrypt_json
 
 
 MAC_RE = re.compile(r"^[0-9a-f]{12}$")
+WINDOWS_SHELL_ERROR_MARKERS = (
+    "not recognized as an internal or external command",
+    "is not recognized as the name of a cmdlet",
+)
 
 
 def _credential_payload(payload: DeviceCreate | DeviceUpdate) -> dict[str, str]:
@@ -302,6 +307,36 @@ def is_windows_ssh(client: paramiko.SSHClient) -> bool:
     return code == 0 and "windows" in f"{output}\n{error}".lower()
 
 
+def is_windows_shell_error(output: str, error: str = "") -> bool:
+    combined = f"{output}\n{error}".lower()
+    return any(marker in combined for marker in WINDOWS_SHELL_ERROR_MARKERS)
+
+
+def powershell_encoded_command(script: str) -> str:
+    encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
+    return f"powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encoded}"
+
+
+def run_windows_power_command(client: paramiko.SSHClient, action: str, label: str) -> tuple[bool, str]:
+    commands = {
+        "reboot": (
+            "shutdown.exe /r /t 0 /f",
+            'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Restart-Computer -Force"',
+        ),
+        "shutdown": (
+            "shutdown.exe /s /t 0 /f",
+            'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "Stop-Computer -Force"',
+        ),
+    }
+    last_message = "command returned a non-zero exit code"
+    for command in commands[action]:
+        code, output, error = run_ssh_command(client, command, timeout=10)
+        if code == 0:
+            return True, f"{label} command sent."
+        last_message = error or output.strip() or last_message
+    return False, f"{label} failed: {last_message}"
+
+
 def get_device_stats(device: Device) -> dict[str, int | float | str | None]:
     if device.connection_type != "ssh_sftp":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Stats require SSH/SFTP access.")
@@ -464,10 +499,13 @@ rm -f /tmp/remotepanel_stats_df_$$ 2>/dev/null || true
     client = None
     try:
         client = connect_ssh_device(device)
+        windows_command = powershell_encoded_command(windows_script)
         if is_windows_ssh(client):
-            code, output, error = run_ssh_command(client, "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command -", windows_script, timeout=20)
+            code, output, error = run_ssh_command(client, windows_command, timeout=20)
         else:
             code, output, error = run_ssh_command(client, "sh -s", script, timeout=15)
+            if code != 0 and is_windows_shell_error(output, error):
+                code, output, error = run_ssh_command(client, windows_command, timeout=20)
         if code != 0:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Stats failed: {error or 'command returned a non-zero exit code'}")
     except HTTPException:
@@ -529,14 +567,7 @@ def run_device_power_action(device: Device, action: str) -> tuple[bool, str]:
     try:
         client = connect_ssh_device(device)
         if is_windows_ssh(client):
-            windows_commands = {
-                "reboot": "shutdown.exe /r /t 0 /f",
-                "shutdown": "shutdown.exe /s /t 0 /f",
-            }
-            code, output, error = run_ssh_command(client, windows_commands[action], timeout=10)
-            if code != 0:
-                return False, f"{labels[action]} failed: {error or output.strip() or 'command returned a non-zero exit code'}"
-            return True, f"{labels[action]} command sent."
+            return run_windows_power_command(client, action, labels[action])
 
         command = f"sh -lc {commands[action]!r}"
         stdin, stdout, stderr = client.exec_command(command, timeout=15)
@@ -545,8 +576,11 @@ def run_device_power_action(device: Device, action: str) -> tuple[bool, str]:
             stdin.flush()
         stdin.close()
         code = stdout.channel.recv_exit_status()
+        output = stdout.read().decode("utf-8", errors="replace")
         error = stderr.read().decode("utf-8", errors="replace").strip()
         if code != 0:
+            if is_windows_shell_error(output, error):
+                return run_windows_power_command(client, action, labels[action])
             hint = " Check that this SSH user can run power commands with sudo."
             if not sudo_password:
                 hint = " Configure passwordless sudo for this SSH user, or save the device with password authentication."
