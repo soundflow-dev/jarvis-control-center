@@ -285,9 +285,64 @@ def _parse_float(value: str | None) -> float | None:
         return None
 
 
+def run_ssh_command(client: paramiko.SSHClient, command: str, input_text: str | None = None, timeout: int = 15) -> tuple[int, str, str]:
+    stdin, stdout, stderr = client.exec_command(command, timeout=timeout)
+    if input_text is not None:
+        stdin.write(input_text)
+        stdin.flush()
+    stdin.close()
+    code = stdout.channel.recv_exit_status()
+    output = stdout.read().decode("utf-8", errors="replace")
+    error = stderr.read().decode("utf-8", errors="replace").strip()
+    return code, output, error
+
+
+def is_windows_ssh(client: paramiko.SSHClient) -> bool:
+    code, output, error = run_ssh_command(client, "cmd /c ver", timeout=5)
+    return code == 0 and "windows" in f"{output}\n{error}".lower()
+
+
 def get_device_stats(device: Device) -> dict[str, int | float | str | None]:
     if device.connection_type != "ssh_sftp":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Stats require SSH/SFTP access.")
+
+    windows_script = r"""
+$ErrorActionPreference = "SilentlyContinue"
+function Out-RemotePanelValue($Key, $Value) {
+  if ($null -eq $Value) { $Value = "" }
+  Write-Output "$Key=$Value"
+}
+
+$cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
+$os = Get-CimInstance Win32_OperatingSystem
+$disk = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Sort-Object DeviceID | Select-Object -First 1
+$processors = Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor
+$totalCpu = $processors | Where-Object { $_.Name -eq "_Total" } | Select-Object -First 1
+$coreValues = $processors | Where-Object { $_.Name -match "^[0-9]+$" } | Sort-Object {[int]$_.Name} | ForEach-Object { [math]::Round([double]$_.PercentProcessorTime, 1) }
+$load = if ($cpu.NumberOfLogicalProcessors -gt 0) { [math]::Round([double]$totalCpu.PercentProcessorTime * [double]$cpu.NumberOfLogicalProcessors / 100, 2) } else { "" }
+$uptime = if ($os.LastBootUpTime) { [int]((Get-Date) - $os.LastBootUpTime).TotalSeconds } else { "" }
+$memoryTotal = if ($os.TotalVisibleMemorySize) { [int64]$os.TotalVisibleMemorySize * 1024 } else { "" }
+$memoryAvailable = if ($os.FreePhysicalMemory) { [int64]$os.FreePhysicalMemory * 1024 } else { "" }
+$diskTotal = if ($disk.Size) { [int64]$disk.Size } else { "" }
+$diskAvailable = if ($disk.FreeSpace) { [int64]$disk.FreeSpace } else { "" }
+$diskUsed = if ($disk.Size -and $disk.FreeSpace) { [int64]$disk.Size - [int64]$disk.FreeSpace } else { "" }
+
+Out-RemotePanelValue "remote_os" "windows"
+Out-RemotePanelValue "cpu_model" $cpu.Name
+Out-RemotePanelValue "cpu_cores" $cpu.NumberOfLogicalProcessors
+Out-RemotePanelValue "cpu_usage_percent" ([math]::Round([double]$totalCpu.PercentProcessorTime, 1))
+Out-RemotePanelValue "cpu_core_usage_percent" ($coreValues -join ",")
+Out-RemotePanelValue "load_1m" $load
+Out-RemotePanelValue "load_5m" $load
+Out-RemotePanelValue "load_15m" $load
+Out-RemotePanelValue "memory_total" $memoryTotal
+Out-RemotePanelValue "memory_available" $memoryAvailable
+Out-RemotePanelValue "uptime_seconds" $uptime
+Out-RemotePanelValue "disk_total" $diskTotal
+Out-RemotePanelValue "disk_used" $diskUsed
+Out-RemotePanelValue "disk_available" $diskAvailable
+Out-RemotePanelValue "disk_mount" $disk.DeviceID
+"""
 
     script = r"""
 system_name=$(uname -s 2>/dev/null || echo "")
@@ -409,13 +464,10 @@ rm -f /tmp/remotepanel_stats_df_$$ 2>/dev/null || true
     client = None
     try:
         client = connect_ssh_device(device)
-        stdin, stdout, stderr = client.exec_command("sh -s", timeout=15)
-        stdin.write(script)
-        stdin.flush()
-        stdin.close()
-        code = stdout.channel.recv_exit_status()
-        output = stdout.read().decode("utf-8", errors="replace")
-        error = stderr.read().decode("utf-8", errors="replace").strip()
+        if is_windows_ssh(client):
+            code, output, error = run_ssh_command(client, "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command -", windows_script, timeout=20)
+        else:
+            code, output, error = run_ssh_command(client, "sh -s", script, timeout=15)
         if code != 0:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Stats failed: {error or 'command returned a non-zero exit code'}")
     except HTTPException:
@@ -476,6 +528,16 @@ def run_device_power_action(device: Device, action: str) -> tuple[bool, str]:
     client = None
     try:
         client = connect_ssh_device(device)
+        if is_windows_ssh(client):
+            windows_commands = {
+                "reboot": "shutdown.exe /r /t 0 /f",
+                "shutdown": "shutdown.exe /s /t 0 /f",
+            }
+            code, output, error = run_ssh_command(client, windows_commands[action], timeout=10)
+            if code != 0:
+                return False, f"{labels[action]} failed: {error or output.strip() or 'command returned a non-zero exit code'}"
+            return True, f"{labels[action]} command sent."
+
         command = f"sh -lc {commands[action]!r}"
         stdin, stdout, stderr = client.exec_command(command, timeout=15)
         if sudo_password:

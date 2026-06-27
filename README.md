@@ -20,6 +20,8 @@ This repository is an early MVP scaffold. The first boot starts empty and shows 
 - Device credentials encrypted in SQLite using `APP_SECRET_KEY`
 - Add, list, edit, and delete machines with optional SSH/SFTP access
 - Web SSH terminal over backend WebSocket
+- Remote power actions for SSH machines: Wake-on-LAN, reboot, and shutdown
+- Stats panel for SSH machines with CPU usage, per-core usage when available, memory, disk, and uptime
 - SFTP file explorer with multi-select actions
 - SFTP to SFTP copy/move that copies file contents, preserves basic timestamps when possible, and ignores incompatible xattrs/ACLs
 - SMB share support for listing, downloading, creating folders, renaming, deleting, and copying/moving to or from SFTP/SMB
@@ -29,6 +31,27 @@ This repository is an early MVP scaffold. The first boot starts empty and shows 
 - Responsive UI for desktop, tablet, and phone
 - Light mode, dark mode, and system theme mode
 - Transfer policy endpoint documenting the default "Transfers that just work" behavior
+
+## Machine Support
+
+RemotePanel is designed for mixed homelabs.
+
+Wake-on-LAN only needs a saved MAC address and is sent from the RemotePanel backend to the local network. Reboot, shutdown, terminal, files, and stats use SSH/SFTP when enabled on the machine.
+
+Current stats support:
+
+- Linux and Home Assistant OS: CPU usage, per-core CPU usage, memory, disk, and uptime.
+- macOS: CPU usage, memory, disk, and uptime. Per-core CPU usage is estimated from total CPU usage because macOS does not expose the same per-core counters through a plain SSH session.
+- FreeBSD: CPU usage, memory, disk, and uptime. Per-core CPU usage appears when `kern.cp_times` is available.
+- Windows with OpenSSH Server and PowerShell: CPU usage, per-core CPU usage, memory, disk, and uptime.
+
+Power actions:
+
+- Home Assistant OS uses `ha host reboot` and `ha host shutdown` when the `ha` CLI is available.
+- Linux, macOS, and FreeBSD use normal reboot/poweroff commands, with `sudo` support when the SSH password is saved.
+- Windows uses `shutdown.exe /r /t 0 /f` and `shutdown.exe /s /t 0 /f`.
+
+For shutdown/reboot, the remote SSH user must have permission to run the relevant power command. On Unix-like systems that often means passwordless sudo or password authentication saved in RemotePanel. On Windows, the SSH user normally needs administrator privileges.
 
 ## Planned Next MVP Steps
 
@@ -66,6 +89,8 @@ On first launch, create the administrator account. The setup route is locked aft
 ## Adding Shares
 
 Machines use a friendly name and host/IP. SSH/SFTP access is optional and can be enabled per machine.
+
+Add a MAC address to enable Wake-on-LAN for a machine. Wake-on-LAN support also depends on the target machine firmware/OS and network allowing magic packets.
 
 SMB shares are added inside a machine through its Shares button. Use the full share path when possible:
 
